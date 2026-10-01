@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://resources/weapon_def.gd" id="1_wdef"]
+
+[resource]
+script = ExtResource("1_wdef")
+id = &"pistol"
+display_name = "Pistol"
+damage = 5.0
+fire_interval = 0.35
+projectiles_per_shot = 1
+spread_degrees = 2.0
+projectile_speed = 320.0
+attack_range = 150.0
+pierce = 0
+knockback = 2.0
+magazine_size = 12
+reload_time = 1.0
+infinite_ammo = true
+max_reserve_ammo = 0
+start_reserve_ammo = 0
+unlock_cost = 0

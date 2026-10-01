@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="WaveTable" format=3]
+
+[ext_resource type="Script" path="res://resources/wave_table.gd" id="1_table"]
+[ext_resource type="Script" path="res://resources/spawn_entry.gd" id="2_entry"]
+[ext_resource type="Resource" path="res://data/zombies/walker.tres" id="3_walker"]
+[ext_resource type="Resource" path="res://data/zombies/runner.tres" id="4_runner"]
+[ext_resource type="Resource" path="res://data/zombies/brute.tres" id="5_brute"]
+
+[sub_resource type="Resource" id="Resource_walker"]
+script = ExtResource("2_entry")
+zombie = ExtResource("3_walker")
+weight = 10.0
+min_wave = 1
+
+[sub_resource type="Resource" id="Resource_runner"]
+script = ExtResource("2_entry")
+zombie = ExtResource("4_runner")
+weight = 4.0
+min_wave = 3
+
+[sub_resource type="Resource" id="Resource_brute"]
+script = ExtResource("2_entry")
+zombie = ExtResource("5_brute")
+weight = 1.0
+min_wave = 5
+
+[resource]
+script = ExtResource("1_table")
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_walker"), SubResource("Resource_runner"), SubResource("Resource_brute")])

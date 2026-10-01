@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ZombieDef" format=3]
+
+[ext_resource type="Script" path="res://resources/zombie_def.gd" id="1_zdef"]
+
+[sub_resource type="Gradient" id="Gradient_walker"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0.52, 0.72, 0.38, 1, 0.28, 0.42, 0.2, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_walker"]
+gradient = SubResource("Gradient_walker")
+width = 10
+height = 14
+fill_to = Vector2(0, 1)
+
+[resource]
+script = ExtResource("1_zdef")
+id = &"walker"
+max_hp = 10.0
+move_speed = 28.0
+contact_damage = 5.0
+attack_interval = 0.8
+radius = 5.0
+coin_value = 1
+texture = SubResource("GradientTexture2D_walker")

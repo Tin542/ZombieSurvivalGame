@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://resources/weapon_def.gd" id="1_wdef"]
+
+[resource]
+script = ExtResource("1_wdef")
+id = &"shotgun"
+display_name = "Shotgun"
+damage = 4.0
+fire_interval = 0.8
+projectiles_per_shot = 6
+spread_degrees = 30.0
+projectile_speed = 280.0
+attack_range = 110.0
+pierce = 1
+knockback = 5.0
+magazine_size = 6
+reload_time = 1.6
+infinite_ammo = false
+max_reserve_ammo = 48
+start_reserve_ammo = 24
+unlock_cost = 500

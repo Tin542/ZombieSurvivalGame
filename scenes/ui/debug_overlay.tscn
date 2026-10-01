@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/debug_overlay.gd" id="1_debug"]
+
+[node name="DebugOverlay" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_debug")
+
+[node name="Panel" type="VBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -64.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 100.0
+grow_horizontal = 0
+theme_override_constants/separation = 2
+
+[node name="Stats" type="Label" parent="Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+horizontal_alignment = 2
+
+[node name="Spawn50" type="Button" parent="Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "+50"
+
+[node name="Spawn200" type="Button" parent="Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "+200"
+
+[node name="Clear" type="Button" parent="Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "Clear"

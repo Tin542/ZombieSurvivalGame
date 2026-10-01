@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://resources/weapon_def.gd" id="1_wdef"]
+
+[resource]
+script = ExtResource("1_wdef")
+id = &"smg"
+display_name = "SMG"
+damage = 3.0
+fire_interval = 0.09
+projectiles_per_shot = 1
+spread_degrees = 6.0
+projectile_speed = 360.0
+attack_range = 140.0
+pierce = 0
+knockback = 1.0
+magazine_size = 30
+reload_time = 1.4
+infinite_ammo = false
+max_reserve_ammo = 240
+start_reserve_ammo = 120
+unlock_cost = 300
