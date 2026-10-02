@@ -3,6 +3,7 @@ extends Node2D
 ## Simulates every zombie in one loop over packed arrays (structure-of-arrays).
 ## Zombie nodes are display-only pooled sprites: no per-zombie scripts or
 ## physics bodies. Hits, separation and contact all go through SpatialGrid.
+## Deciding when and where zombies appear is ZombieSpawner's job.
 ##
 ## Positions are in this node's local space, which must match the arena's
 ## (keep this node at the origin).
@@ -18,15 +19,13 @@ signal target_hit(damage: float)
 const FLASH_TIME := 0.06
 const FLASH_COLOR := Color(1.0, 0.35, 0.35)
 
-## Hard cap on simulated zombies; extra spawns wait in a queue.
+## Hard cap on simulated zombies; spawn_at() refuses beyond it.
 @export var max_alive: int = 400
 @export var grid_cell_size: float = 32.0
 ## Each zombie recomputes separation every N ticks (staggered) to spread cost.
 @export_range(1, 8) var separation_stride: int = 2
 @export var separation_strength: float = 8.0
 @export var max_separation_speed: float = 60.0
-## Spawns try to land at least this far from the target (i.e. off-screen).
-@export var min_spawn_distance: float = 380.0
 
 ## What zombies chase and attack. Null = zombies idle.
 var target: Node2D
@@ -34,13 +33,15 @@ var target_radius: float = 5.0
 
 var _bounds: Rect2
 var _grid: SpatialGrid
-var _rng := RandomNumberGenerator.new()
 var _tick := 0
 var _has_dead := false
 var _max_radius := 0.0
 var _next_uid := 1
 
+## Slots in use, including zombies killed this tick and not yet compacted.
 var _count := 0
+## Living zombies only.
+var _alive := 0
 var _uid := PackedInt32Array()
 var _pos := PackedVector2Array()
 var _push := PackedVector2Array()
@@ -51,9 +52,6 @@ var _attack_cd := PackedFloat32Array()
 var _flash := PackedFloat32Array()
 var _def: Array[ZombieDef] = []
 var _view: Array[Sprite2D] = []
-
-## Spawns waiting for a free slot: [def, hp_multiplier, speed_multiplier].
-var _queue: Array[Array] = []
 
 
 func setup(bounds: Rect2) -> void:
@@ -71,13 +69,19 @@ func setup(bounds: Rect2) -> void:
 	_view.resize(max_alive)
 
 
-## Spawns one zombie at a random off-screen point in the arena, or queues it if
-## max_alive is reached.
-func spawn(def: ZombieDef, hp_multiplier: float = 1.0, speed_multiplier: float = 1.0) -> void:
-	if _count >= max_alive:
-		_queue.append([def, hp_multiplier, speed_multiplier])
-		return
-	_activate(def, _pick_spawn_position(), hp_multiplier, speed_multiplier)
+## Spawns one zombie at `world_position`. Returns false (and spawns nothing)
+## when the manager is full or not set up yet.
+func spawn_at(def: ZombieDef, world_position: Vector2, hp_multiplier: float = 1.0, speed_multiplier: float = 1.0) -> bool:
+	if _grid == null or is_full():
+		return false
+	_activate(def, to_local(world_position), hp_multiplier, speed_multiplier)
+	return true
+
+
+## True when no new zombie fits this tick. Slots of zombies killed this tick
+## free up at the start of the next one.
+func is_full() -> bool:
+	return _count >= max_alive
 
 
 ## Applies damage to zombie `index` and nudges it by `knockback`. Returns true
@@ -94,6 +98,7 @@ func damage(index: int, amount: float, knockback: Vector2 = Vector2.ZERO) -> boo
 		return false
 	view.visible = false
 	_has_dead = true
+	_alive -= 1
 	zombie_killed.emit(_pos[index], _def[index])
 	return true
 
@@ -158,21 +163,18 @@ func get_zombie_radius(index: int) -> float:
 	return _radius[index]
 
 
+## Living zombies (excludes ones killed this tick).
 func alive_count() -> int:
-	return _count
+	return _alive
 
 
-func queued_count() -> int:
-	return _queue.size()
-
-
-## Removes every zombie and pending spawn.
+## Removes every zombie without emitting zombie_killed.
 func clear() -> void:
 	for i in _count:
 		_view[i].visible = false
 		_def[i] = null
 	_count = 0
-	_queue.clear()
+	_alive = 0
 	_has_dead = false
 
 
@@ -181,7 +183,6 @@ func _physics_process(delta: float) -> void:
 		return
 	if _has_dead:
 		_compact()
-	_drain_queue()
 	_grid.rebuild(_pos, _count)
 	if _count == 0 or target == null:
 		return
@@ -256,6 +257,7 @@ func _separation(i: int, p: Vector2, r: float) -> Vector2:
 func _activate(def: ZombieDef, at: Vector2, hp_multiplier: float, speed_multiplier: float) -> void:
 	var i := _count
 	_count += 1
+	_alive += 1
 	_uid[i] = _next_uid
 	_next_uid = _next_uid + 1 if _next_uid < 0x7FFFFFFF else 1
 	_pos[i] = at
@@ -304,29 +306,3 @@ func _compact() -> void:
 			_view[last] = dead_view
 		_def[last] = null
 		_count = last
-
-
-func _drain_queue() -> void:
-	while not _queue.is_empty() and _count < max_alive:
-		var pending: Array = _queue.pop_front()
-		_activate(pending[0], _pick_spawn_position(), pending[1], pending[2])
-
-
-## Random point inside the arena, preferring ones far from the target.
-func _pick_spawn_position() -> Vector2:
-	var area := _bounds.grow(-8.0)
-	var avoid := to_local(target.global_position) if target else area.get_center()
-	var min_d2 := min_spawn_distance * min_spawn_distance
-	var best := area.get_center()
-	var best_d2 := -1.0
-	for _attempt in 8:
-		var p := Vector2(
-			_rng.randf_range(area.position.x, area.end.x),
-			_rng.randf_range(area.position.y, area.end.y))
-		var d2 := p.distance_squared_to(avoid)
-		if d2 >= min_d2:
-			return p
-		if d2 > best_d2:
-			best_d2 = d2
-			best = p
-	return best

@@ -8,7 +8,9 @@ const STATS_INTERVAL := 0.25
 
 ## Injected by the run, for stats only.
 var zombies: ZombieManager
+var spawner: ZombieSpawner
 var projectiles: ProjectileManager
+var run_state: RunState
 
 var _stats_timer := 0.0
 
@@ -30,10 +32,12 @@ func _process(delta: float) -> void:
 		return
 	_stats_timer = STATS_INTERVAL
 	var text := "FPS %d" % Engine.get_frames_per_second()
+	if run_state != null:
+		text += "\nW %d" % run_state.wave
 	if zombies != null:
 		text += "\nZ %d" % zombies.alive_count()
-		if zombies.queued_count() > 0:
-			text += " +%d" % zombies.queued_count()
+	if spawner != null and spawner.pending_count() > 0:
+		text += " +%d" % spawner.pending_count()
 	if projectiles != null:
 		text += "\nB %d" % projectiles.active_count()
 	_stats.text = text

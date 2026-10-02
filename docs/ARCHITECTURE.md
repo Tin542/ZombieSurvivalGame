@@ -22,7 +22,9 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `systems/` | Engine-agnostic helpers: `SpatialGrid`, `SaveData` |
 | `scenes/run/` | Gameplay root, `RunState` |
 | `scenes/player/` | Player body + `components/` |
-| `scenes/zombies/` | `ZombieManager` |
+| `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
+| `scenes/waves/` | `WaveDirector` |
+| `scenes/projectiles/` | `ProjectileManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
 | `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
@@ -40,8 +42,21 @@ are swap-removed at tick start). To follow a zombie across ticks, keep its `uid`
 and call `resolve(uid, hint)`; re-acquire when it returns -1 (see `AutoAim`).
 
 ## Physics tick order
-`process_physics_priority`: Zombies (-10) compact, move, rebuild the grid →
+`process_physics_priority`: WaveDirector (-30) advances the wave loop → Spawner
+(-20) adds zombies → Zombies (-10) compact, move, rebuild the grid →
 Player + components (0) aim and fire → Projectiles (10) resolve hits.
+
+## Spawning
+- `ZombieSpawner` decides when/where; `ZombieManager` only simulates
+  (`spawn_at()` refuses when full — the spawner holds the request, never drops it).
+- Timed batches (`start_batch`) use `WaveTable` for count, interval, type mix and
+  HP/speed scaling; bursts (`spawn_burst`) are for debug/events.
+- Spawn points: uniform over four bands framing the camera view, clipped to the
+  arena — always off-screen. At most `max_per_tick` spawns per tick.
+- `WaveDirector` loop: BREAK (countdown) → COMBAT (batch from the spawner) →
+  cleared once nothing is alive or pending → BREAK (`WaveTable.supply_duration`,
+  skippable) → next wave. It polls counts, so zombies removed without kill
+  signals still end a wave. Emits signals only; `run.gd` forwards them to the HUD.
 
 ## Combat
 - `AutoAim` follows its target via uid each tick; nearest-search runs at 10 Hz
@@ -54,4 +69,6 @@ Player + components (0) aim and fire → Projectiles (10) resolve hits.
 ```
 godot --headless --path . -s res://tests/zombie_stress_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/weapon_smoke_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/spawner_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/wave_director_test.gd
 ```

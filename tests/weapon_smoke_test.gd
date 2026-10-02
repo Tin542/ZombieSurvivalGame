@@ -16,8 +16,11 @@ func _initialize() -> void:
 	var zombies: ZombieManager = run.get_node("World/Zombies")
 	var projectiles: ProjectileManager = run.get_node("Projectiles")
 	var player: Player = run.get_node("World/Player")
+	var spawner: ZombieSpawner = run.get_node("Spawner")
 	var weapons := player.weapons
 	player.health.set_max_hp(1e9)
+	run.get_node("WaveDirector").stop()
+	zombies.clear()
 
 	var shots := [0]
 	weapons.fired.connect(func(_dir: Vector2) -> void: shots[0] += 1)
@@ -29,8 +32,7 @@ func _initialize() -> void:
 
 	# --- Pistol vs a small wave -------------------------------------------
 	var walker: ZombieDef = load("res://data/zombies/walker.tres")
-	for i in 30:
-		zombies.spawn(walker)
+	spawner.spawn_burst(30, 1)
 	await _frames(60 * 25)
 	print("pistol: shots=%d kills=%d reloads=%d alive=%d" % [shots[0], run.state.kills, reloads[0], zombies.alive_count()])
 	_check(shots[0] > 0, "pistol fired")
@@ -43,8 +45,7 @@ func _initialize() -> void:
 	weapons.switch_to(1)
 	var smg_slot = weapons._slots[1]
 	var reserve_before: int = smg_slot.reserve
-	for i in 30:
-		zombies.spawn(walker)
+	spawner.spawn_burst(30, 1)
 	await _frames(60 * 20)
 	print("smg: reserve %d -> %d, mag=%d, kills=%d" % [reserve_before, smg_slot.reserve, smg_slot.magazine, run.state.kills])
 	_check(smg_slot.reserve < reserve_before, "smg spent reserve ammo")
@@ -65,8 +66,11 @@ func _initialize() -> void:
 
 	# --- Projectile throughput --------------------------------------------
 	zombies.clear()
+	var bounds: Rect2 = run.get_node("Arena").bounds
+	var place_rng := RandomNumberGenerator.new()
 	for i in 400:
-		zombies.spawn(walker, 1000.0)
+		var at := Vector2(place_rng.randf_range(bounds.position.x, bounds.end.x), place_rng.randf_range(bounds.position.y, bounds.end.y))
+		zombies.spawn_at(walker, at, 1000.0)
 	await _frames(5)
 	projectiles.set_physics_process(false)
 	var rng := RandomNumberGenerator.new()

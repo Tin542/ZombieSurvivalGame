@@ -27,3 +27,4 @@ min_wave = 5
 [resource]
 script = ExtResource("1_table")
 entries = Array[ExtResource("2_entry")]([SubResource("Resource_walker"), SubResource("Resource_runner"), SubResource("Resource_brute")])
+supply_duration = 8.0

@@ -6,10 +6,9 @@
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="4_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_overlay.tscn" id="6_debug"]
-[ext_resource type="Script" path="res://resources/zombie_def.gd" id="7_zdef"]
-[ext_resource type="Resource" path="res://data/zombies/walker.tres" id="8_walker"]
-[ext_resource type="Resource" path="res://data/zombies/runner.tres" id="9_runner"]
-[ext_resource type="Resource" path="res://data/zombies/brute.tres" id="10_brute"]
+[ext_resource type="Script" path="res://scenes/zombies/zombie_spawner.gd" id="7_spawner"]
+[ext_resource type="Resource" path="res://data/waves/wave_table.tres" id="8_waves"]
+[ext_resource type="Script" path="res://scenes/waves/wave_director.gd" id="9_director"]
 [ext_resource type="Script" path="res://scenes/projectiles/projectile_manager.gd" id="11_projectiles"]
 [ext_resource type="Script" path="res://resources/weapon_def.gd" id="12_wdef"]
 [ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="13_pistol"]
@@ -20,7 +19,15 @@
 script = ExtResource("1_run")
 weapon_catalog = Array[ExtResource("12_wdef")]([ExtResource("13_pistol"), ExtResource("14_smg"), ExtResource("15_shotgun")])
 debug_unlock_all_weapons = true
-debug_zombie_pool = Array[ExtResource("7_zdef")]([ExtResource("8_walker"), ExtResource("8_walker"), ExtResource("9_runner"), ExtResource("10_brute")])
+wave_table = ExtResource("8_waves")
+
+[node name="WaveDirector" type="Node" parent="."]
+process_physics_priority = -30
+script = ExtResource("9_director")
+
+[node name="Spawner" type="Node" parent="."]
+process_physics_priority = -20
+script = ExtResource("7_spawner")
 
 [node name="Arena" type="Node2D" parent="."]
 script = ExtResource("2_arena")
