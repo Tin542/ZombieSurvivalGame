@@ -5,9 +5,14 @@ extends CharacterBody2D
 ## components (Health, AutoAim, WeaponHolder); this script only links them
 ## and handles visuals.
 
+const HURT_COLOR := Color(1.0, 0.3, 0.3)
+const HURT_FLASH_TIME := 0.12
+
 @export var move_speed: float = 80.0
 ## Radius zombies use for contact range.
 @export var body_radius: float = 5.0
+
+var _hurt_tween: Tween
 
 @onready var health: HealthComponent = $Health
 @onready var aim: AutoAim = $AutoAim
@@ -19,6 +24,7 @@ extends CharacterBody2D
 
 func _ready() -> void:
 	weapons.aim = aim
+	health.damaged.connect(_on_damaged)
 	health.died.connect(_on_died)
 
 
@@ -54,7 +60,17 @@ func _update_facing(move_direction: Vector2) -> void:
 		_gun.flip_v = look.x < 0.0
 
 
+func _on_damaged(_amount: float) -> void:
+	if _hurt_tween != null:
+		_hurt_tween.kill()
+	_sprite.modulate = HURT_COLOR
+	_hurt_tween = create_tween()
+	_hurt_tween.tween_property(_sprite, "modulate", Color.WHITE, HURT_FLASH_TIME)
+
+
 func _on_died() -> void:
+	if _hurt_tween != null:
+		_hurt_tween.kill()
 	set_physics_process(false)
 	set_process_unhandled_input(false)
 	aim.set_physics_process(false)

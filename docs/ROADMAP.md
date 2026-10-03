@@ -11,7 +11,7 @@
 | 05 | Weapon + auto aim | ✅ | `AutoAim`, `WeaponHolder` (3 weapons, per-weapon ammo, auto reload, fallback), `ProjectileManager`, HUD ammo + SWAP |
 | 06 | Zombie spawning | ✅ | `ZombieSpawner`: timed batches + bursts, always off-screen, holds at the 400 cap, ≤8 spawns/tick |
 | 07 | Wave system | ✅ | `WaveDirector`: countdown → combat → cleared → break (skippable) → next wave. HUD wave/remaining/banner/countdown |
-| 08 | HP + death | 🟡 | HP, HP bar, contact damage, death stops the run and returns to menu. **Missing:** game-over screen (wave reached, kills, coins), hurt feedback |
+| 08 | HP + death | ✅ | HP bar, contact damage, hurt feedback (sprite flash + red screen pulse), results banked on death, game-over screen (wave, kills, coins, best) with RETRY / MENU |
 | 09 | Money | ⬜ | `RunState.coins` and `ZombieDef.coin_value` exist; no coin drops / pickup yet |
 | 10 | Supply phase | ⬜ | Break window exists (`WaveTable.supply_duration`, `WeaponHolder.add_ammo()`, `HealthComponent.heal()`). **Missing:** crates spawned in the arena, walk to collect |
 | 11 | Main menu | 🟡 | Title, coins, best wave, PLAY. **Missing:** shop entry, settings |
@@ -28,6 +28,7 @@
 | `tests/weapon_smoke_test.gd` | Auto-aim, firing, kills, reload, weapon fallback, ammo refill, bullet cost |
 | `tests/spawner_test.gd` | Off-screen placement, cap/backpressure, pacing, wave type mix |
 | `tests/wave_director_test.gd` | Wave loop, clear conditions, break skip/timeout, stop on death |
+| `tests/game_over_test.gd` | Hurt feedback, results saved on death, game-over screen + button lock |
 
 Run any of them with:
 ```

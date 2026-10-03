@@ -26,7 +26,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/waves/` | `WaveDirector` |
 | `scenes/projectiles/` | `ProjectileManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
-| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), debug overlay |
+| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
 
 ## Game rules decided
@@ -65,10 +65,19 @@ Player + components (0) aim and fire → Projectiles (10) resolve hits.
   `projectile_requested`, which `run.gd` connects to `ProjectileManager.spawn`.
 - Projectiles move on the ground plane (zombie feet) and are drawn 6 px higher.
 
+## Death
+- `HealthComponent.died` → `run.gd` stops the director, banks coins and best wave
+  in `SaveService` immediately, then after `GAME_OVER_DELAY` hides the HUD and
+  shows `GameOverScreen`. The screen only emits `retry_pressed` / `menu_pressed`;
+  the run routes them to `SceneRouter`.
+- Hurt feedback: `Player` flashes its sprite on `damaged`; `Hud.flash_damage()`
+  pulses a red overlay and ignores hits while the pulse is bright (no strobing).
+
 ## Tests / benchmarks
 ```
 godot --headless --path . -s res://tests/zombie_stress_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/weapon_smoke_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/spawner_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/wave_director_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/game_over_test.gd
 ```
