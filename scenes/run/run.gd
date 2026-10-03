@@ -9,6 +9,8 @@ extends Node2D
 
 ## Debug overlay bursts use at least this wave, so every zombie type shows up.
 const DEBUG_BURST_MIN_WAVE := 10
+## Seconds between death and the game-over screen, so the death reads first.
+const GAME_OVER_DELAY := 1.0
 
 ## Every weapon in the game, in loadout order. Locked ones are filtered out.
 @export var weapon_catalog: Array[WeaponDef] = []
@@ -26,6 +28,7 @@ var state := RunState.new()
 @onready var _player: Player = $World/Player
 @onready var _projectiles: ProjectileManager = $Projectiles
 @onready var _hud: Hud = $HUD
+@onready var _game_over: GameOverScreen = $GameOver
 
 
 func _ready() -> void:
@@ -34,8 +37,11 @@ func _ready() -> void:
 	_player.global_position = bounds.get_center()
 	_player.set_camera_limits(bounds)
 	_player.health.hp_changed.connect(_hud.set_hp)
+	_player.health.damaged.connect(_hud.flash_damage.unbind(1))
 	_player.health.died.connect(_on_player_died)
 	_hud.set_hp(_player.health.hp, _player.health.max_hp)
+	_game_over.retry_pressed.connect(SceneRouter.start_run)
+	_game_over.menu_pressed.connect(SceneRouter.go_to_main_menu)
 
 	_zombies.setup(bounds)
 	_zombies.target = _player
@@ -111,7 +117,10 @@ func _on_zombie_killed(_position: Vector2, _def: ZombieDef) -> void:
 func _on_player_died() -> void:
 	_director.stop()
 	_hud.hide_break()
+	# Commit results right away, so quitting during the delay loses nothing.
+	var new_best := state.wave > SaveService.data.best_wave
 	SaveService.add_coins(state.coins)
 	SaveService.submit_wave_reached(state.wave)
-	await get_tree().create_timer(1.5).timeout
-	SceneRouter.go_to_main_menu()
+	await get_tree().create_timer(GAME_OVER_DELAY).timeout
+	_hud.hide()
+	_game_over.show_results(state.wave, state.kills, state.coins, SaveService.data.best_wave, new_best)

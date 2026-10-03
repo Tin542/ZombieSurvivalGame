@@ -9,12 +9,16 @@ signal skip_break_pressed
 
 const BANNER_HOLD := 1.4
 const BANNER_FADE := 0.4
+## Peak opacity of the red screen flash when the player is hit.
+const DAMAGE_FLASH_ALPHA := 0.22
+const DAMAGE_FLASH_FADE := 0.25
 
 ## Local mirror of the break countdown, for display only (WaveDirector is the
 ## authority on when the next wave actually starts).
 var _break_left := 0.0
 var _next_wave := 0
 var _banner_tween: Tween
+var _flash_tween: Tween
 
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
@@ -27,11 +31,13 @@ var _banner_tween: Tween
 @onready var _break_panel: Control = %BreakPanel
 @onready var _countdown_label: Label = %CountdownLabel
 @onready var _skip_button: Button = %SkipButton
+@onready var _damage_flash: ColorRect = %DamageFlash
 
 
 func _ready() -> void:
 	_switch_button.pressed.connect(switch_weapon_pressed.emit)
 	_skip_button.pressed.connect(skip_break_pressed.emit)
+	_damage_flash.modulate.a = 0.0
 	_banner.hide()
 	_break_panel.hide()
 	_remaining_label.hide()
@@ -42,6 +48,18 @@ func set_hp(hp: float, max_hp: float) -> void:
 	_hp_bar.max_value = max_hp
 	_hp_bar.value = hp
 	_hp_label.text = "HP %d/%d" % [ceili(hp), ceili(max_hp)]
+
+
+## Red screen-edge flash. Hits while it is still bright don't restart it, so a
+## crowd landing many hits per second reads as one pulse, not a strobe.
+func flash_damage() -> void:
+	if _damage_flash.modulate.a > DAMAGE_FLASH_ALPHA * 0.5:
+		return
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_damage_flash.modulate.a = DAMAGE_FLASH_ALPHA
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_damage_flash, "modulate:a", 0.0, DAMAGE_FLASH_FADE)
 
 
 func set_weapon(weapon: WeaponDef) -> void:
