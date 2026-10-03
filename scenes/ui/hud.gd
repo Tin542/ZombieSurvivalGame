@@ -22,6 +22,7 @@ var _flash_tween: Tween
 
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
+@onready var _coin_label: Label = %CoinLabel
 @onready var _weapon_label: Label = %WeaponLabel
 @onready var _ammo_label: Label = %AmmoLabel
 @onready var _switch_button: Button = %SwitchButton
@@ -48,6 +49,10 @@ func set_hp(hp: float, max_hp: float) -> void:
 	_hp_bar.max_value = max_hp
 	_hp_bar.value = hp
 	_hp_label.text = "HP %d/%d" % [ceili(hp), ceili(max_hp)]
+
+
+func set_coins(coins: int) -> void:
+	_coin_label.text = "$ %d" % coins
 
 
 ## Red screen-edge flash. Hits while it is still bright don't restart it, so a
