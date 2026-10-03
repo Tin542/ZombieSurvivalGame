@@ -25,6 +25,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
 | `scenes/projectiles/` | `ProjectileManager` |
+| `scenes/pickups/` | `CoinManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
 | `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
@@ -44,7 +45,7 @@ and call `resolve(uid, hint)`; re-acquire when it returns -1 (see `AutoAim`).
 ## Physics tick order
 `process_physics_priority`: WaveDirector (-30) advances the wave loop → Spawner
 (-20) adds zombies → Zombies (-10) compact, move, rebuild the grid →
-Player + components (0) aim and fire → Projectiles (10) resolve hits.
+Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected.
 
 ## Spawning
 - `ZombieSpawner` decides when/where; `ZombieManager` only simulates
@@ -65,6 +66,16 @@ Player + components (0) aim and fire → Projectiles (10) resolve hits.
   `projectile_requested`, which `run.gd` connects to `ProjectileManager.spawn`.
 - Projectiles move on the ground plane (zombie feet) and are drawn 6 px higher.
 
+## Money
+- `ZombieManager.zombie_killed` → `run.gd` → `CoinManager.spawn(pos, coin_value)`.
+  Coins are packed arrays drawn in one `_draw` (like projectiles), on the ground
+  layer below the y-sorted `World`.
+- Resting coins start homing inside `magnet_radius` (shop upgrade hook);
+  `collect_all()` on wave clear vacuums the rest. A full pool awards the value
+  at once, so money is never dropped.
+- `CoinManager.collected` → `RunState.add_coins` → HUD. Only the run total is
+  banked into `SaveService` on death; ground coins at death are lost.
+
 ## Death
 - `HealthComponent.died` → `run.gd` stops the director, banks coins and best wave
   in `SaveService` immediately, then after `GAME_OVER_DELAY` hides the HUD and
@@ -80,4 +91,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/weapon_smoke_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/spawner_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/wave_director_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/game_over_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
 ```

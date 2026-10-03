@@ -10,6 +10,7 @@ const STATS_INTERVAL := 0.25
 var zombies: ZombieManager
 var spawner: ZombieSpawner
 var projectiles: ProjectileManager
+var coins: CoinManager
 var run_state: RunState
 
 var _stats_timer := 0.0
@@ -40,4 +41,6 @@ func _process(delta: float) -> void:
 		text += " +%d" % spawner.pending_count()
 	if projectiles != null:
 		text += "\nB %d" % projectiles.active_count()
+	if coins != null:
+		text += "\nC %d" % coins.active_count()
 	_stats.text = text

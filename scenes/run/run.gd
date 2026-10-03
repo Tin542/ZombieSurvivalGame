@@ -5,7 +5,8 @@ extends Node2D
 ## Physics order within a tick (process_physics_priority): WaveDirector (-30)
 ## advances the wave loop, Spawner (-20) adds zombies, Zombies (-10) move and
 ## rebuild the grid, then Player and its components (0) aim and fire, then
-## Projectiles (10) resolve hits against fresh positions.
+## Projectiles (10) resolve hits against fresh positions, then Coins (20)
+## home in on the player and get collected.
 
 ## Debug overlay bursts use at least this wave, so every zombie type shows up.
 const DEBUG_BURST_MIN_WAVE := 10
@@ -27,6 +28,7 @@ var state := RunState.new()
 @onready var _spawner: ZombieSpawner = $Spawner
 @onready var _player: Player = $World/Player
 @onready var _projectiles: ProjectileManager = $Projectiles
+@onready var _coins: CoinManager = $Coins
 @onready var _hud: Hud = $HUD
 @onready var _game_over: GameOverScreen = $GameOver
 
@@ -60,6 +62,12 @@ func _ready() -> void:
 	_projectiles.setup(bounds)
 	_projectiles.zombies = _zombies
 
+	_coins.setup(bounds)
+	_coins.target = _player
+	_coins.collected.connect(state.add_coins)
+	state.coins_changed.connect(_hud.set_coins)
+	_hud.set_coins(state.coins)
+
 	var weapons := _player.weapons
 	_player.aim.zombies = _zombies
 	weapons.projectile_requested.connect(_projectiles.spawn)
@@ -91,6 +99,7 @@ func _wire_debug_overlay() -> void:
 	overlay.spawner = _spawner
 	overlay.run_state = state
 	overlay.projectiles = _projectiles
+	overlay.coins = _coins
 	overlay.spawn_requested.connect(_debug_spawn)
 	overlay.clear_requested.connect(_zombies.clear)
 
@@ -108,13 +117,18 @@ func _on_wave_started(wave: int, _zombie_count: int) -> void:
 
 func _on_wave_cleared(_wave: int) -> void:
 	_hud.show_banner("WAVE CLEARED")
+	_coins.collect_all()
 
 
-func _on_zombie_killed(_position: Vector2, _def: ZombieDef) -> void:
+## `position` is in ZombieManager space, which matches world space (both at the origin).
+func _on_zombie_killed(position: Vector2, def: ZombieDef) -> void:
 	state.kills += 1
+	_coins.spawn(_zombies.to_global(position), def.coin_value)
 
 
 func _on_player_died() -> void:
+	# Coins still on the ground are lost; none can be collected after banking.
+	_coins.target = null
 	_director.stop()
 	_hud.hide_break()
 	# Commit results right away, so quitting during the delay loses nothing.
