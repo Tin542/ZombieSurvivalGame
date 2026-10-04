@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://resources/upgrade_def.gd" id="1_up"]
+
+[resource]
+script = ExtResource("1_up")
+id = &"magnet"
+display_name = "Coin Magnet"
+description = "%s coin pickup range per level"
+stat = 3
+value_per_level = 0.25
+max_level = 4
+base_cost = 40
+cost_growth = 1.5

@@ -21,6 +21,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `data/` | Balance `.tres` (zombies, weapons, waves) |
 | `systems/` | Engine-agnostic helpers: `SpatialGrid`, `SaveData` |
 | `scenes/run/` | Gameplay root, `RunState` |
+| `scenes/main_menu/` | Main menu, `ShopPanel` + `ShopRow`, `SettingsPanel` |
 | `scenes/player/` | Player body + `components/` |
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
@@ -93,6 +94,23 @@ Supplies (25) check crate pickups.
   (`HealthComponent.heal`) or `supply_ammo_fraction` (`WeaponHolder.add_ammo`) and
   shows a HUD toast.
 
+## Shop + settings
+- `ShopCatalog` (`data/shop_catalog.tres`) lists `UpgradeDef`s (levelled, cost
+  grows by `cost_growth`) and every `WeaponDef` (unlock_cost 0 = owned from the
+  start). The run uses it for its weapon list too.
+- Purchases are single `SaveService` calls (`purchase_upgrade`, `purchase_weapon`)
+  that spend and grant in one save. `ShopPanel` only checks max level, shows
+  prices and refreshes on `coins_changed` / `upgrades_changed`.
+- `run._apply_upgrades()` turns owned levels into stats via
+  `ShopCatalog.bonus(stat, SaveService.get_upgrade_level)`: max HP (flat),
+  damage / move speed / coin magnet / starting ammo (fractions). Runs before the
+  loadout is built.
+- Settings live in `SaveData.settings` (JSON, type-checked against
+  `DEFAULT_SETTINGS`). `SaveService` applies master volume itself; the run reads
+  `vibration` (throttled hurt buzz) and `show_fps` (HUD label).
+- Android back / Esc closes the open menu panel; `quit_on_go_back` is off so the
+  main menu decides when back quits.
+
 ## Death
 - `HealthComponent.died` → `run.gd` stops the director, banks coins and best wave
   in `SaveService` immediately, then after `GAME_OVER_DELAY` hides the HUD and
@@ -102,6 +120,8 @@ Supplies (25) check crate pickups.
   pulses a red overlay and ignores hits while the pulse is bright (no strobing).
 
 ## Tests / benchmarks
+Test scripts (any `res://tests/...` on the command line) make `SaveService` use
+`user://test_save.json`, wiped at start, so tests never touch the real save.
 ```
 godot --headless --path . -s res://tests/zombie_stress_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/weapon_smoke_test.gd
@@ -110,4 +130,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/wave_director_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/game_over_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 ```

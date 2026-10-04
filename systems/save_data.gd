@@ -4,11 +4,19 @@ extends RefCounted
 ## tampered save file can never execute code.
 
 const VERSION := 1
+const DEFAULT_SETTINGS := {
+	"master_volume": 1.0,
+	"vibration": true,
+	"show_fps": false,
+}
 
 var coins: int = 0
 var best_wave: int = 0
 var upgrade_levels: Dictionary[StringName, int] = {}
 var unlocked_weapons: Array[StringName] = [&"pistol"]
+## Player preferences. Keys and default values come from DEFAULT_SETTINGS; values
+## loaded from disk are only kept when their type matches the default.
+var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 
 
 func to_dict() -> Dictionary:
@@ -24,6 +32,7 @@ func to_dict() -> Dictionary:
 		"best_wave": best_wave,
 		"upgrade_levels": levels,
 		"unlocked_weapons": weapons,
+		"settings": settings.duplicate(),
 	}
 
 
@@ -43,4 +52,14 @@ static func from_dict(dict: Dictionary) -> SaveData:
 			var id := StringName(str(value))
 			if id not in data.unlocked_weapons:
 				data.unlocked_weapons.append(id)
+
+	var loaded_settings: Variant = dict.get("settings", {})
+	if loaded_settings is Dictionary:
+		for key in DEFAULT_SETTINGS:
+			var value: Variant = loaded_settings.get(key)
+			# JSON has one number type, so accept ints where a float is expected.
+			if DEFAULT_SETTINGS[key] is float and (value is int or value is float):
+				data.settings[key] = float(value)
+			elif typeof(value) == typeof(DEFAULT_SETTINGS[key]):
+				data.settings[key] = value
 	return data

@@ -14,6 +14,7 @@ const TOAST_FADE := 0.3
 ## Peak opacity of the red screen flash when the player is hit.
 const DAMAGE_FLASH_ALPHA := 0.22
 const DAMAGE_FLASH_FADE := 0.25
+const FPS_INTERVAL := 0.5
 
 ## Local mirror of the break countdown, for display only (WaveDirector is the
 ## authority on when the next wave actually starts).
@@ -22,10 +23,12 @@ var _next_wave := 0
 var _banner_tween: Tween
 var _toast_tween: Tween
 var _flash_tween: Tween
+var _fps_timer := 0.0
 
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
 @onready var _coin_label: Label = %CoinLabel
+@onready var _fps_label: Label = %FpsLabel
 @onready var _weapon_label: Label = %WeaponLabel
 @onready var _ammo_label: Label = %AmmoLabel
 @onready var _switch_button: Button = %SwitchButton
@@ -47,7 +50,7 @@ func _ready() -> void:
 	_toast.hide()
 	_break_panel.hide()
 	_remaining_label.hide()
-	set_process(false)
+	_fps_label.hide()
 
 
 func set_hp(hp: float, max_hp: float) -> void:
@@ -128,18 +131,27 @@ func show_break(next_wave: int, duration: float) -> void:
 	_update_countdown()
 	_remaining_label.hide()
 	_break_panel.show()
-	set_process(true)
 
 
 func hide_break() -> void:
 	_break_panel.hide()
 	_remaining_label.show()
-	set_process(false)
+
+
+func set_fps_visible(show: bool) -> void:
+	_fps_label.visible = show
+	_fps_timer = 0.0
 
 
 func _process(delta: float) -> void:
-	_break_left = maxf(_break_left - delta, 0.0)
-	_update_countdown()
+	if _break_panel.visible:
+		_break_left = maxf(_break_left - delta, 0.0)
+		_update_countdown()
+	if _fps_label.visible:
+		_fps_timer -= delta
+		if _fps_timer <= 0.0:
+			_fps_timer = FPS_INTERVAL
+			_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 
 
 func _update_countdown() -> void:

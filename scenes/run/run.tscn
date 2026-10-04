@@ -10,18 +10,14 @@
 [ext_resource type="Resource" path="res://data/waves/wave_table.tres" id="8_waves"]
 [ext_resource type="Script" path="res://scenes/waves/wave_director.gd" id="9_director"]
 [ext_resource type="Script" path="res://scenes/projectiles/projectile_manager.gd" id="11_projectiles"]
-[ext_resource type="Script" path="res://resources/weapon_def.gd" id="12_wdef"]
-[ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="13_pistol"]
-[ext_resource type="Resource" path="res://data/weapons/smg.tres" id="14_smg"]
-[ext_resource type="Resource" path="res://data/weapons/shotgun.tres" id="15_shotgun"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over.tscn" id="16_game_over"]
 [ext_resource type="Script" path="res://scenes/pickups/coin_manager.gd" id="17_coins"]
 [ext_resource type="Script" path="res://scenes/pickups/supply_manager.gd" id="18_supplies"]
+[ext_resource type="Resource" path="res://data/shop_catalog.tres" id="19_catalog"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
-weapon_catalog = Array[ExtResource("12_wdef")]([ExtResource("13_pistol"), ExtResource("14_smg"), ExtResource("15_shotgun")])
-debug_unlock_all_weapons = true
+catalog = ExtResource("19_catalog")
 wave_table = ExtResource("8_waves")
 
 [node name="WaveDirector" type="Node" parent="."]

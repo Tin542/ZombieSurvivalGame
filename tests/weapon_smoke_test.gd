@@ -10,6 +10,7 @@ var _failures := 0
 
 func _initialize() -> void:
 	var run: Node = load(RUN_SCENE).instantiate()
+	run.debug_unlock_all_weapons = true  # test all three weapons regardless of the save
 	root.add_child(run)
 	await process_frame
 

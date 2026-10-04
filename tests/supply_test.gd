@@ -20,6 +20,7 @@ func _initialize() -> void:
 	var backup: Dictionary = save_service.data.to_dict()
 
 	var run: Node = load(RUN_SCENE).instantiate()
+	run.debug_unlock_all_weapons = true  # test all three weapons regardless of the save
 	# Shrink the curve in memory (never saved) so the test runs quickly.
 	var table: WaveTable = run.wave_table
 	table.base_count = 1

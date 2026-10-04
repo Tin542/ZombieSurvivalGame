@@ -22,10 +22,10 @@ class WeaponSlot:
 	var magazine: int
 	var reserve: int
 
-	func _init(weapon: WeaponDef) -> void:
+	func _init(weapon: WeaponDef, ammo_multiplier: float) -> void:
 		def = weapon
 		magazine = weapon.magazine_size
-		reserve = clampi(weapon.start_reserve_ammo, 0, weapon.max_reserve_ammo)
+		reserve = clampi(roundi(weapon.start_reserve_ammo * ammo_multiplier), 0, weapon.max_reserve_ammo)
 
 	func has_any_ammo() -> bool:
 		return def.infinite_ammo or magazine > 0 or reserve > 0
@@ -38,6 +38,8 @@ class WeaponSlot:
 var aim: AutoAim
 ## Shop upgrade hook, applied to every shot.
 var damage_multiplier: float = 1.0
+## Shop upgrade hook: scales starting reserve ammo. Set before set_loadout().
+var start_ammo_multiplier: float = 1.0
 
 var _slots: Array[WeaponSlot] = []
 var _current := -1
@@ -51,7 +53,7 @@ var _rng := RandomNumberGenerator.new()
 func set_loadout(weapons: Array[WeaponDef]) -> void:
 	_slots.clear()
 	for weapon in weapons:
-		_slots.append(WeaponSlot.new(weapon))
+		_slots.append(WeaponSlot.new(weapon, start_ammo_multiplier))
 	_current = -1
 	if not _slots.is_empty():
 		switch_to(0)

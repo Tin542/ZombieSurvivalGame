@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ShopCatalog" format=3]
+
+[ext_resource type="Script" path="res://resources/shop_catalog.gd" id="1_cat"]
+[ext_resource type="Script" path="res://resources/upgrade_def.gd" id="2_up"]
+[ext_resource type="Script" path="res://resources/weapon_def.gd" id="3_wdef"]
+[ext_resource type="Resource" path="res://data/upgrades/max_hp.tres" id="4_hp"]
+[ext_resource type="Resource" path="res://data/upgrades/damage.tres" id="5_dmg"]
+[ext_resource type="Resource" path="res://data/upgrades/move_speed.tres" id="6_spd"]
+[ext_resource type="Resource" path="res://data/upgrades/magnet.tres" id="7_mag"]
+[ext_resource type="Resource" path="res://data/upgrades/start_ammo.tres" id="8_ammo"]
+[ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="9_pistol"]
+[ext_resource type="Resource" path="res://data/weapons/smg.tres" id="10_smg"]
+[ext_resource type="Resource" path="res://data/weapons/shotgun.tres" id="11_shotgun"]
+
+[resource]
+script = ExtResource("1_cat")
+upgrades = Array[ExtResource("2_up")]([ExtResource("4_hp"), ExtResource("5_dmg"), ExtResource("6_spd"), ExtResource("7_mag"), ExtResource("8_ammo")])
+weapons = Array[ExtResource("3_wdef")]([ExtResource("9_pistol"), ExtResource("10_smg"), ExtResource("11_shotgun")])

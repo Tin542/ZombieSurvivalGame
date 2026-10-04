@@ -13,15 +13,22 @@ extends Node2D
 const DEBUG_BURST_MIN_WAVE := 10
 ## Seconds between death and the game-over screen, so the death reads first.
 const GAME_OVER_DELAY := 1.0
+## Hurt vibration length (ms) and the minimum gap between buzzes, so a crowd
+## landing hits every frame doesn't keep the motor running.
+const HURT_VIBRATION_MS := 40
+const HURT_VIBRATION_COOLDOWN := 0.35
 
-## Every weapon in the game, in loadout order. Locked ones are filtered out.
-@export var weapon_catalog: Array[WeaponDef] = []
+## Shop items: weapons (in loadout order; locked ones are filtered out) and
+## the upgrades whose owned levels are applied at the start of the run.
+@export var catalog: ShopCatalog
 ## Debug builds only: start with every weapon regardless of shop unlocks.
 @export var debug_unlock_all_weapons: bool = false
 ## Difficulty curve: zombie count, type mix and scaling per wave.
 @export var wave_table: WaveTable
 
 var state := RunState.new()
+
+var _last_vibration_ms := -100000
 
 @onready var _arena: Arena = $Arena
 @onready var _zombies: ZombieManager = $World/Zombies
@@ -43,7 +50,7 @@ func _ready() -> void:
 	_player.health.hp_changed.connect(_hud.set_hp)
 	_player.health.damaged.connect(_hud.flash_damage.unbind(1))
 	_player.health.died.connect(_on_player_died)
-	_hud.set_hp(_player.health.hp, _player.health.max_hp)
+	_player.health.damaged.connect(_vibrate_on_hurt.unbind(1))
 	_game_over.retry_pressed.connect(SceneRouter.start_run)
 	_game_over.menu_pressed.connect(SceneRouter.go_to_main_menu)
 
@@ -82,6 +89,10 @@ func _ready() -> void:
 	weapons.ammo_changed.connect(_hud.set_ammo)
 	weapons.reload_started.connect(_hud.show_reload)
 	_hud.switch_weapon_pressed.connect(weapons.cycle_weapon)
+
+	_apply_upgrades()
+	_hud.set_hp(_player.health.hp, _player.health.max_hp)
+	_hud.set_fps_visible(SaveService.get_setting("show_fps"))
 	weapons.set_loadout(_build_loadout())
 	_hud.set_switch_visible(weapons.weapon_count() > 1)
 
@@ -94,10 +105,32 @@ func _ready() -> void:
 func _build_loadout() -> Array[WeaponDef]:
 	var unlock_all := debug_unlock_all_weapons and OS.is_debug_build()
 	var loadout: Array[WeaponDef] = []
-	for weapon in weapon_catalog:
+	for weapon in catalog.weapons:
 		if unlock_all or weapon.unlock_cost == 0 or SaveService.is_weapon_unlocked(weapon.id):
 			loadout.append(weapon)
 	return loadout
+
+
+## Turns owned shop levels into this run's stats. Must run before the loadout
+## is built (starting ammo) and before the HUD reads max HP.
+func _apply_upgrades() -> void:
+	var level_of := SaveService.get_upgrade_level
+	var health := _player.health
+	health.set_max_hp(health.max_hp + catalog.bonus(UpgradeDef.Stat.MAX_HP, level_of))
+	_player.weapons.damage_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.DAMAGE, level_of)
+	_player.weapons.start_ammo_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.START_AMMO, level_of)
+	_player.move_speed *= 1.0 + catalog.bonus(UpgradeDef.Stat.MOVE_SPEED, level_of)
+	_coins.magnet_radius *= 1.0 + catalog.bonus(UpgradeDef.Stat.MAGNET, level_of)
+
+
+func _vibrate_on_hurt() -> void:
+	if not SaveService.get_setting("vibration"):
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_vibration_ms < HURT_VIBRATION_COOLDOWN * 1000.0:
+		return
+	_last_vibration_ms = now
+	Input.vibrate_handheld(HURT_VIBRATION_MS)
 
 
 func _wire_debug_overlay() -> void:

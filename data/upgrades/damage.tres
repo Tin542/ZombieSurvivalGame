@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://resources/upgrade_def.gd" id="1_up"]
+
+[resource]
+script = ExtResource("1_up")
+id = &"damage"
+display_name = "Firepower"
+description = "%s weapon damage per level"
+stat = 1
+value_per_level = 0.1
+max_level = 5
+base_cost = 80
+cost_growth = 1.7
