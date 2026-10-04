@@ -25,7 +25,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
 | `scenes/projectiles/` | `ProjectileManager` |
-| `scenes/pickups/` | `CoinManager` |
+| `scenes/pickups/` | `CoinManager`, `SupplyManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
 | `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
@@ -45,7 +45,8 @@ and call `resolve(uid, hint)`; re-acquire when it returns -1 (see `AutoAim`).
 ## Physics tick order
 `process_physics_priority`: WaveDirector (-30) advances the wave loop → Spawner
 (-20) adds zombies → Zombies (-10) compact, move, rebuild the grid →
-Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected.
+Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected →
+Supplies (25) check crate pickups.
 
 ## Spawning
 - `ZombieSpawner` decides when/where; `ZombieManager` only simulates
@@ -76,6 +77,22 @@ Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins
 - `CoinManager.collected` → `RunState.add_coins` → HUD. Only the run total is
   banked into `SaveService` on death; ground coins at death are lost.
 
+## Supply phase
+- Every break after a cleared wave is a supply phase (not the countdown before
+  wave 1). `run.gd` plans the crate kinds and calls
+  `SupplyManager.drop_crates(kinds, break_duration)`; `wave_started` clears
+  leftovers.
+- Planning (`run._plan_crates`): no limited-ammo weapon → all health; otherwise
+  one health + one ammo, extras go to whichever is lower (HP vs
+  `WeaponHolder.ammo_fill_ratio()`).
+- Crates land in a ring around the player (`min/max_drop_distance`, spaced by
+  `min_spacing`), fall in over `DROP_TIME` and can only be picked up once landed;
+  they blink near the end of the break. The `Indicators` child (z 50) draws
+  edge arrows for off-screen crates.
+- `SupplyManager.collected(kind)` → `run.gd` applies `WaveTable.supply_heal_fraction`
+  (`HealthComponent.heal`) or `supply_ammo_fraction` (`WeaponHolder.add_ammo`) and
+  shows a HUD toast.
+
 ## Death
 - `HealthComponent.died` → `run.gd` stops the director, banks coins and best wave
   in `SaveService` immediately, then after `GAME_OVER_DELAY` hides the HUD and
@@ -92,4 +109,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/spawner_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/wave_director_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/game_over_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 ```

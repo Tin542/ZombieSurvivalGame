@@ -16,6 +16,7 @@
 [ext_resource type="Resource" path="res://data/weapons/shotgun.tres" id="15_shotgun"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over.tscn" id="16_game_over"]
 [ext_resource type="Script" path="res://scenes/pickups/coin_manager.gd" id="17_coins"]
+[ext_resource type="Script" path="res://scenes/pickups/supply_manager.gd" id="18_supplies"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
@@ -37,6 +38,13 @@ script = ExtResource("2_arena")
 [node name="Coins" type="Node2D" parent="."]
 process_physics_priority = 20
 script = ExtResource("17_coins")
+
+[node name="Supplies" type="Node2D" parent="."]
+process_physics_priority = 25
+script = ExtResource("18_supplies")
+
+[node name="Indicators" type="Node2D" parent="Supplies"]
+z_index = 50
 
 [node name="World" type="Node2D" parent="."]
 y_sort_enabled = true

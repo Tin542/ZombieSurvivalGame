@@ -9,6 +9,8 @@ signal skip_break_pressed
 
 const BANNER_HOLD := 1.4
 const BANNER_FADE := 0.4
+const TOAST_HOLD := 0.9
+const TOAST_FADE := 0.3
 ## Peak opacity of the red screen flash when the player is hit.
 const DAMAGE_FLASH_ALPHA := 0.22
 const DAMAGE_FLASH_FADE := 0.25
@@ -18,6 +20,7 @@ const DAMAGE_FLASH_FADE := 0.25
 var _break_left := 0.0
 var _next_wave := 0
 var _banner_tween: Tween
+var _toast_tween: Tween
 var _flash_tween: Tween
 
 @onready var _hp_bar: ProgressBar = %HpBar
@@ -29,6 +32,7 @@ var _flash_tween: Tween
 @onready var _wave_label: Label = %WaveLabel
 @onready var _remaining_label: Label = %RemainingLabel
 @onready var _banner: Label = %Banner
+@onready var _toast: Label = %Toast
 @onready var _break_panel: Control = %BreakPanel
 @onready var _countdown_label: Label = %CountdownLabel
 @onready var _skip_button: Button = %SkipButton
@@ -40,6 +44,7 @@ func _ready() -> void:
 	_skip_button.pressed.connect(skip_break_pressed.emit)
 	_damage_flash.modulate.a = 0.0
 	_banner.hide()
+	_toast.hide()
 	_break_panel.hide()
 	_remaining_label.hide()
 	set_process(false)
@@ -102,6 +107,19 @@ func show_banner(text: String) -> void:
 	_banner_tween.tween_interval(BANNER_HOLD)
 	_banner_tween.tween_property(_banner, "modulate:a", 0.0, BANNER_FADE)
 	_banner_tween.tween_callback(_banner.hide)
+
+
+## Small message under the banner for pickups ("+35 HP").
+func show_toast(text: String) -> void:
+	if _toast_tween != null:
+		_toast_tween.kill()
+	_toast.text = text
+	_toast.modulate.a = 1.0
+	_toast.show()
+	_toast_tween = create_tween()
+	_toast_tween.tween_interval(TOAST_HOLD)
+	_toast_tween.tween_property(_toast, "modulate:a", 0.0, TOAST_FADE)
+	_toast_tween.tween_callback(_toast.hide)
 
 
 func show_break(next_wave: int, duration: float) -> void:
