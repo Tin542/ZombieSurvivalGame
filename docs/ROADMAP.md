@@ -14,9 +14,9 @@
 | 08 | HP + death | ✅ | HP bar, contact damage, hurt feedback (sprite flash + red screen pulse), results banked on death, game-over screen (wave, kills, coins, best) with RETRY / MENU |
 | 09 | Money | ✅ | `CoinManager`: kill drops worth `coin_value`, magnet pickup, vacuum on wave clear, overflow awarded directly, HUD `$` counter. Banked to `SaveService` on death |
 | 10 | Supply phase | ✅ | `SupplyManager`: health/ammo crates drop around the player after each cleared wave (12 s break), fall-in + land, edge arrows when off-screen, blink before the next wave, leftovers removed. Smart mix by HP vs ammo; HUD toast |
-| 11 | Main menu | 🟡 | Title, coins, best wave, PLAY. **Missing:** shop entry, settings |
-| 12 | Shop | ⬜ | `SaveService.try_spend()`, upgrade levels, weapon unlocks and `WeaponDef.unlock_cost` exist; no UI or upgrade defs |
-| 13 | Save system | 🟡 | `SaveService` JSON with atomic write. **Missing:** wiring real coin income, save versioning/migration test |
+| 11 | Main menu | ✅ | PLAY / SHOP / SETTINGS, coins + best wave. Settings: master volume, vibrate on hit, show FPS (saved in the save file). Android back / Esc closes panels |
+| 12 | Shop | ✅ | 5 levelled upgrades (Toughness, Firepower, Sprint, Coin Magnet, Ammo Pouch) + SMG / Shotgun unlocks from `ShopCatalog`. Atomic purchases; owned levels applied at run start |
+| 13 | Save system | 🟡 | JSON, atomic write, real coin income, purchases + settings, test runs isolated to `test_save.json`. **Missing:** save versioning/migration, backup of the previous save |
 | 14 | Pixel art + animation | ⬜ | All visuals are gradient placeholders |
 | 15 | Optimization | 🟡 | Built for crowds from the start (SoA, grid, pooling, single-draw bullets) + headless benchmarks. **Missing:** on-device profiling |
 | 16 | Android APK | ⬜ | Settings are mobile-ready (GL Compatibility, landscape); export preset not created |
@@ -31,6 +31,7 @@
 | `tests/coin_test.gd` | Kill drops, magnet pickup, wave-clear vacuum, full pool, no pickup after death |
 | `tests/game_over_test.gd` | Hurt feedback, results saved on death, game-over screen + button lock |
 | `tests/supply_test.gd` | Crate drop timing, placement, landing, heal/ammo effects, crate planning, cleanup, no pickup after death |
+| `tests/shop_test.gd` | Pricing, atomic purchases on disk, settings persistence + volume, menu/shop/settings UI, upgrades + unlocks applied in a run |
 
 Run any of them with:
 ```
