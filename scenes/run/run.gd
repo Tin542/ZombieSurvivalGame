@@ -6,7 +6,8 @@ extends Node2D
 ## advances the wave loop, Spawner (-20) adds zombies, Zombies (-10) move and
 ## rebuild the grid, then Player and its components (0) aim and fire, then
 ## Projectiles (10) resolve hits against fresh positions, then Coins (20)
-## home in on the player and get collected.
+## home in on the player and get collected, then Supplies (25) check crate
+## pickups.
 
 ## Debug overlay bursts use at least this wave, so every zombie type shows up.
 const DEBUG_BURST_MIN_WAVE := 10
@@ -29,6 +30,7 @@ var state := RunState.new()
 @onready var _player: Player = $World/Player
 @onready var _projectiles: ProjectileManager = $Projectiles
 @onready var _coins: CoinManager = $Coins
+@onready var _supplies: SupplyManager = $Supplies
 @onready var _hud: Hud = $HUD
 @onready var _game_over: GameOverScreen = $GameOver
 
@@ -56,6 +58,7 @@ func _ready() -> void:
 	_director.wave_started.connect(_on_wave_started)
 	_director.wave_cleared.connect(_on_wave_cleared)
 	_director.break_started.connect(_hud.show_break)
+	_director.break_started.connect(_on_break_started)
 	_director.remaining_changed.connect(_hud.set_remaining)
 	_hud.skip_break_pressed.connect(_director.skip_break)
 
@@ -67,6 +70,10 @@ func _ready() -> void:
 	_coins.collected.connect(state.add_coins)
 	state.coins_changed.connect(_hud.set_coins)
 	_hud.set_coins(state.coins)
+
+	_supplies.setup(bounds)
+	_supplies.target = _player
+	_supplies.collected.connect(_on_supply_collected)
 
 	var weapons := _player.weapons
 	_player.aim.zombies = _zombies
@@ -113,11 +120,58 @@ func _on_wave_started(wave: int, _zombie_count: int) -> void:
 	_hud.set_wave(wave)
 	_hud.hide_break()
 	_hud.show_banner("WAVE %d" % wave)
+	_supplies.clear()
 
 
 func _on_wave_cleared(_wave: int) -> void:
 	_hud.show_banner("WAVE CLEARED")
 	_coins.collect_all()
+
+
+## Every break after a cleared wave is a supply phase; the countdown before
+## wave 1 is not.
+func _on_break_started(next_wave: int, duration: float) -> void:
+	if next_wave <= 1:
+		return
+	_supplies.drop_crates(_plan_crates(wave_table.supply_crates), duration)
+	_hud.show_toast("SUPPLIES DROPPED")
+
+
+## Which crates to drop. Ammo is useless without a limited-ammo weapon, so
+## then every crate is health. Otherwise one of each, and the rest go to
+## whichever the player is shorter on.
+func _plan_crates(count: int) -> Array[SupplyManager.Kind]:
+	var kinds: Array[SupplyManager.Kind] = []
+	var weapons := _player.weapons
+	if not weapons.has_limited_ammo():
+		for i in count:
+			kinds.append(SupplyManager.Kind.HEALTH)
+		return kinds
+	var health := _player.health
+	var hp_missing := 1.0 - health.hp / health.max_hp
+	var ammo_missing := 1.0 - weapons.ammo_fill_ratio()
+	var extra := SupplyManager.Kind.HEALTH if hp_missing >= ammo_missing else SupplyManager.Kind.AMMO
+	for i in count:
+		if i == 0:
+			kinds.append(SupplyManager.Kind.HEALTH)
+		elif i == 1:
+			kinds.append(SupplyManager.Kind.AMMO)
+		else:
+			kinds.append(extra)
+	return kinds
+
+
+func _on_supply_collected(kind: SupplyManager.Kind, _position: Vector2) -> void:
+	match kind:
+		SupplyManager.Kind.HEALTH:
+			var health := _player.health
+			var before := health.hp
+			health.heal(health.max_hp * wave_table.supply_heal_fraction)
+			var gained := roundi(health.hp - before)
+			_hud.show_toast("+%d HP" % gained if gained > 0 else "HP FULL")
+		SupplyManager.Kind.AMMO:
+			_player.weapons.add_ammo(wave_table.supply_ammo_fraction)
+			_hud.show_toast("+AMMO")
 
 
 ## `position` is in ZombieManager space, which matches world space (both at the origin).
@@ -129,6 +183,7 @@ func _on_zombie_killed(position: Vector2, def: ZombieDef) -> void:
 func _on_player_died() -> void:
 	# Coins still on the ground are lost; none can be collected after banking.
 	_coins.target = null
+	_supplies.target = null
 	_director.stop()
 	_hud.hide_break()
 	# Commit results right away, so quitting during the delay loses nothing.
