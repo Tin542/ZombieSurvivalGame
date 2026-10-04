@@ -21,8 +21,13 @@ extends Resource
 @export var max_speed_multiplier: float = 1.6
 
 @export_group("Supply phase")
+## Length of the break between waves, when supply crates are on the ground.
 @export var supply_duration: float = 20.0
 @export var supply_crates: int = 3
+## Fraction of max HP a health crate restores.
+@export var supply_heal_fraction: float = 0.35
+## Fraction of each limited weapon's max reserve an ammo crate restores.
+@export var supply_ammo_fraction: float = 0.4
 
 
 func zombie_count(wave: int) -> int:

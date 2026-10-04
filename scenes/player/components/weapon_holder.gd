@@ -91,6 +91,27 @@ func cycle_weapon() -> void:
 		switch_to(next)
 
 
+## True if any weapon in the loadout runs on limited ammo (so ammo pickups
+## are worth anything).
+func has_limited_ammo() -> bool:
+	for slot in _slots:
+		if not slot.def.infinite_ammo:
+			return true
+	return false
+
+
+## How full the limited-ammo weapons are overall, 0..1 (magazines included).
+## 1.0 when the loadout has no limited weapons.
+func ammo_fill_ratio() -> float:
+	var have := 0
+	var cap := 0
+	for slot in _slots:
+		if not slot.def.infinite_ammo:
+			have += slot.magazine + slot.reserve
+			cap += slot.def.magazine_size + slot.def.max_reserve_ammo
+	return float(have) / cap if cap > 0 else 1.0
+
+
 ## Refills every weapon's reserve by `fraction` of its max (supply crates).
 func add_ammo(fraction: float) -> void:
 	for slot in _slots:
