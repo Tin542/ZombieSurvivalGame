@@ -29,6 +29,10 @@ const HURT_VIBRATION_COOLDOWN := 0.35
 var state := RunState.new()
 
 var _last_vibration_ms := -100000
+## Run coins already added to SaveService (progress is banked in steps, see
+## _bank_progress), and the best wave before this run, for the NEW BEST check.
+var _banked_coins := 0
+var _best_wave_before_run := 0
 
 @onready var _arena: Arena = $Arena
 @onready var _zombies: ZombieManager = $World/Zombies
@@ -43,6 +47,7 @@ var _last_vibration_ms := -100000
 
 
 func _ready() -> void:
+	_best_wave_before_run = SaveService.data.best_wave
 	var bounds := _arena.bounds
 
 	_player.global_position = bounds.get_center()
@@ -159,6 +164,7 @@ func _on_wave_started(wave: int, _zombie_count: int) -> void:
 func _on_wave_cleared(_wave: int) -> void:
 	_hud.show_banner("WAVE CLEARED")
 	_coins.collect_all()
+	_bank_progress()
 
 
 ## Every break after a cleared wave is a supply phase; the countdown before
@@ -220,9 +226,28 @@ func _on_player_died() -> void:
 	_director.stop()
 	_hud.hide_break()
 	# Commit results right away, so quitting during the delay loses nothing.
-	var new_best := state.wave > SaveService.data.best_wave
-	SaveService.add_coins(state.coins)
-	SaveService.submit_wave_reached(state.wave)
+	_bank_progress()
+	SaveService.record_run(state.kills)
+	var new_best := state.wave > _best_wave_before_run
 	await get_tree().create_timer(GAME_OVER_DELAY).timeout
 	_hud.hide()
 	_game_over.show_results(state.wave, state.kills, state.coins, SaveService.data.best_wave, new_best)
+
+
+## Saves what the run has earned so far: coins not yet banked and the wave
+## reached. Called at checkpoints (wave cleared, app paused or closing, death)
+## so quitting mid-run never loses coins. Only the unbanked difference is
+## added, so calling it repeatedly can't double-count.
+func _bank_progress() -> void:
+	var unbanked := state.coins - _banked_coins
+	if unbanked > 0:
+		SaveService.add_coins(unbanked)
+		_banked_coins = state.coins
+	SaveService.submit_wave_reached(state.wave)
+
+
+func _notification(what: int) -> void:
+	# Android may kill a backgrounded app without warning; desktop can close.
+	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if is_node_ready():
+			_bank_progress()
