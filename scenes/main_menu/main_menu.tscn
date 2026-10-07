@@ -1,10 +1,10 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://diewuiqvntija"]
 
-[ext_resource type="Script" path="res://scenes/main_menu/main_menu.gd" id="1_menu"]
+[ext_resource type="Script" uid="uid://dylxequlxi0m2" path="res://scenes/main_menu/main_menu.gd" id="1_menu"]
 [ext_resource type="PackedScene" path="res://scenes/main_menu/shop_panel.tscn" id="2_shop"]
 [ext_resource type="PackedScene" path="res://scenes/main_menu/settings_panel.tscn" id="3_settings"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=112268947]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_menu")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=713118165]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,7 +22,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.08, 0.09, 0.08, 1)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=761831577]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -30,11 +30,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Center"]
+[node name="VBox" type="VBoxContainer" parent="Center" unique_id=930330365]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Title" type="Label" parent="Center/VBox"]
+[node name="Title" type="Label" parent="Center/VBox" unique_id=741221447]
 layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
@@ -42,24 +42,31 @@ theme_override_font_sizes/font_size = 28
 text = "ZOMBIE SURVIVAL"
 horizontal_alignment = 1
 
-[node name="CoinsLabel" type="Label" parent="Center/VBox"]
+[node name="CoinsLabel" type="Label" parent="Center/VBox" unique_id=158079476]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.82, 0.25, 1)
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
-[node name="BestWaveLabel" type="Label" parent="Center/VBox"]
+[node name="BestWaveLabel" type="Label" parent="Center/VBox" unique_id=1177031844]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="Center/VBox"]
+[node name="StatsLabel" type="Label" parent="Center/VBox" unique_id=1283134782]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.58, 1)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Center/VBox" unique_id=1691776646]
 custom_minimum_size = Vector2(0, 6)
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="Center/VBox"]
+[node name="PlayButton" type="Button" parent="Center/VBox" unique_id=539723936]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 32)
 layout_mode = 2
@@ -68,7 +75,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 14
 text = "PLAY"
 
-[node name="ShopButton" type="Button" parent="Center/VBox"]
+[node name="ShopButton" type="Button" parent="Center/VBox" unique_id=1226796634]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 26)
 layout_mode = 2
@@ -77,7 +84,7 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 12
 text = "SHOP"
 
-[node name="SettingsButton" type="Button" parent="Center/VBox"]
+[node name="SettingsButton" type="Button" parent="Center/VBox" unique_id=564897191]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(140, 26)
 layout_mode = 2
@@ -86,10 +93,10 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 12
 text = "SETTINGS"
 
-[node name="ShopPanel" parent="." instance=ExtResource("2_shop")]
+[node name="ShopPanel" parent="." unique_id=960544461 instance=ExtResource("2_shop")]
 unique_name_in_owner = true
 layout_mode = 1
 
-[node name="SettingsPanel" parent="." instance=ExtResource("3_settings")]
+[node name="SettingsPanel" parent="." unique_id=1831910285 instance=ExtResource("3_settings")]
 unique_name_in_owner = true
 layout_mode = 1

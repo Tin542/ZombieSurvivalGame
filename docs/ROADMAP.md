@@ -16,7 +16,7 @@
 | 10 | Supply phase | ✅ | `SupplyManager`: health/ammo crates drop around the player after each cleared wave (12 s break), fall-in + land, edge arrows when off-screen, blink before the next wave, leftovers removed. Smart mix by HP vs ammo; HUD toast |
 | 11 | Main menu | ✅ | PLAY / SHOP / SETTINGS, coins + best wave. Settings: master volume, vibrate on hit, show FPS (saved in the save file). Android back / Esc closes panels |
 | 12 | Shop | ✅ | 5 levelled upgrades (Toughness, Firepower, Sprint, Coin Magnet, Ammo Pouch) + SMG / Shotgun unlocks from `ShopCatalog`. Atomic purchases; owned levels applied at run start |
-| 13 | Save system | 🟡 | JSON, atomic write, real coin income, purchases + settings, test runs isolated to `test_save.json`. **Missing:** save versioning/migration, backup of the previous save |
+| 13 | Save system | ✅ | Versioned JSON with step-by-step migration (v2 adds lifetime stats). Rotating `.bak`, per-session backup, corrupt-file recovery, interrupted-write cleanup, newer-format protection. Run coins banked at wave clear / app pause / close / death. Reset progress (2 taps). Tests isolated to `test_save.json` |
 | 14 | Pixel art + animation | ⬜ | All visuals are gradient placeholders |
 | 15 | Optimization | 🟡 | Built for crowds from the start (SoA, grid, pooling, single-draw bullets) + headless benchmarks. **Missing:** on-device profiling |
 | 16 | Android APK | ⬜ | Settings are mobile-ready (GL Compatibility, landscape); export preset not created |
@@ -32,6 +32,7 @@
 | `tests/game_over_test.gd` | Hurt feedback, results saved on death, game-over screen + button lock |
 | `tests/supply_test.gd` | Crate drop timing, placement, landing, heal/ammo effects, crate planning, cleanup, no pickup after death |
 | `tests/shop_test.gd` | Pricing, atomic purchases on disk, settings persistence + volume, menu/shop/settings UI, upgrades + unlocks applied in a run |
+| `tests/save_system_test.gd` | Migration, backup rotation, session backup, corruption recovery, interrupted writes, newer-format saves, stats, reset, mid-run banking |
 
 Run any of them with:
 ```

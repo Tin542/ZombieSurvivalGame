@@ -5,6 +5,7 @@ extends Control
 
 @onready var _coins_label: Label = %CoinsLabel
 @onready var _best_wave_label: Label = %BestWaveLabel
+@onready var _stats_label: Label = %StatsLabel
 @onready var _shop: ShopPanel = %ShopPanel
 @onready var _settings: SettingsPanel = %SettingsPanel
 
@@ -14,9 +15,9 @@ func _ready() -> void:
 	%ShopButton.pressed.connect(_shop.open)
 	%SettingsButton.pressed.connect(_settings.open)
 	SaveService.coins_changed.connect(_on_coins_changed)
+	SaveService.progress_reset.connect(_refresh_progress)
 	_on_coins_changed(SaveService.get_coins())
-	var best := SaveService.data.best_wave
-	_best_wave_label.text = "Best wave: %d" % best if best > 0 else "No runs yet"
+	_refresh_progress()
 
 
 func _notification(what: int) -> void:
@@ -41,3 +42,12 @@ func _close_panel() -> bool:
 
 func _on_coins_changed(total: int) -> void:
 	_coins_label.text = "$ %d" % total
+
+
+func _refresh_progress() -> void:
+	var best := SaveService.data.best_wave
+	_best_wave_label.text = "Best wave: %d" % best if best > 0 else "No runs yet"
+	var runs := SaveService.get_stat("runs_played")
+	_stats_label.visible = runs > 0
+	_stats_label.text = "Runs %d  |  Kills %d  |  Coins earned %d" % [
+		runs, SaveService.get_stat("total_kills"), SaveService.get_stat("coins_earned")]

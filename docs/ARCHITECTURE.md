@@ -111,6 +111,21 @@ Supplies (25) check crate pickups.
 - Android back / Esc closes the open menu panel; `quit_on_go_back` is off so the
   main menu decides when back quits.
 
+## Save system
+- `SaveData` (JSON) is versioned: `VERSION` is what this build writes;
+  `from_dict()` runs `migrate()` first, which upgrades older dictionaries one
+  step at a time (`_migrate_v1_to_v2` added lifetime `stats`). To change the
+  format: bump `VERSION`, add a `_migrate_vN_to_vN+1`, register it in `migrate()`.
+- Files next to `save.json`: `.tmp` (write in progress), `.bak` (previous save,
+  rotated on every write), `.session.bak` (save as it was at game start, before
+  the first write), `.corrupt` (unreadable save moved aside), `.vN.bak` (a save
+  from a newer build, kept before this build overwrites it).
+- Load order: `save.json` → `.bak` → fresh. A leftover `.tmp` is discarded.
+- Runs bank progress in steps (`run._bank_progress`): on wave clear, app pause
+  (Android background), window close and death. Only unbanked coins are added,
+  so repeated checkpoints never double-count. Death also calls `record_run`.
+- `reset_progress()` (Settings → two taps) wipes progress but keeps settings.
+
 ## Death
 - `HealthComponent.died` → `run.gd` stops the director, banks coins and best wave
   in `SaveService` immediately, then after `GAME_OVER_DELAY` hides the HUD and
@@ -131,4 +146,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/game_over_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
 ```

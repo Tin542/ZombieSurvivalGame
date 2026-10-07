@@ -81,6 +81,16 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 11
 text = "Show FPS"
 
+[node name="ResetButton" type="Button" parent="Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 22)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 0.45, 0.4, 1)
+theme_override_font_sizes/font_size = 10
+text = "RESET PROGRESS"
+
 [node name="BackButton" type="Button" parent="Center/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 24)
