@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://resources/item_def.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"grenade"
+display_name = "Grenade"
+color = Color(0.45, 0.55, 0.3, 1)
+kind = 2
+stack_limit = 3
+value = 0.0
+shop_price = 40
+shop_bundle = 1
+damage = 40.0
+radius = 40.0
+fuse = 0.6
+throw_range = 130.0

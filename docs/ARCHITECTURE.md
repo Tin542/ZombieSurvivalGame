@@ -17,9 +17,9 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | Path | Contents |
 |---|---|
 | `autoload/` | `SaveService`, `SceneRouter` |
-| `resources/` | `ZombieDef`, `WeaponDef`, `WaveTable`, `SpawnEntry` |
-| `data/` | Balance `.tres` (zombies, weapons, waves) |
-| `systems/` | Engine-agnostic helpers: `SpatialGrid`, `SaveData` |
+| `resources/` | `ZombieDef`, `WeaponDef`, `WaveTable`, `SpawnEntry`, `UpgradeDef`, `ShopCatalog`, `ItemDef` |
+| `data/` | Balance `.tres` (zombies, weapons, waves, upgrades, items) |
+| `systems/` | Engine-agnostic helpers: `SpatialGrid`, `SaveData`, `Inventory` |
 | `scenes/run/` | Gameplay root, `RunState` |
 | `scenes/main_menu/` | Main menu, `ShopPanel` + `ShopRow`, `SettingsPanel` |
 | `scenes/player/` | Player body + `components/` |
@@ -111,6 +111,22 @@ Supplies (25) check crate pickups.
 - Android back / Esc closes the open menu panel; `quit_on_go_back` is off so the
   main menu decides when back quits.
 
+## Items + inventory
+- `ItemDef` (`data/items/`) describes an item: `kind` (AMMO, MEDKIT, GRENADE,
+  DAMAGE_BOOST, MAX_HP_BOOST), `stack_limit`, effect `value`, shop price and
+  bundle, grenade blast data. `ShopCatalog.items` lists them all;
+  `find_item(id)` resolves saved ids (unknown → null).
+- `WeaponDef.ammo_item` names the item a weapon's reserve is made of (null =
+  own reserve / infinite).
+- `Inventory` (`systems/`) is pure logic: N slots, one stack of one item per
+  slot. `add()` tops up open stacks before empty slots and returns how much
+  fit, so callers keep the rest (pickups stay on the ground). `take()` drains
+  the smallest stacks first. `to_entries()` / `add_entries()` convert to plain
+  `{id, count}` data for saving.
+- Decided rules (Phases 15–20): reserve ammo lives in the bag; boosts last the
+  run only; shop items go to a permanent stash and only what's brought into a
+  run is lost on death; opening the bag pauses; pickups last 30 s.
+
 ## Save system
 - `SaveData` (JSON) is versioned: `VERSION` is what this build writes;
   `from_dict()` runs `migrate()` first, which upgrades older dictionaries one
@@ -147,4 +163,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
+godot --headless --path . -s res://tests/inventory_test.gd
 ```
