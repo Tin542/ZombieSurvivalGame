@@ -33,6 +33,8 @@ var _last_vibration_ms := -100000
 ## _bank_progress), and the best wave before this run, for the NEW BEST check.
 var _banked_coins := 0
 var _best_wave_before_run := 0
+## Weapon damage multiplier from permanent upgrades; run boosts add on top.
+var _base_damage_multiplier := 1.0
 
 @onready var _arena: Arena = $Arena
 @onready var _zombies: ZombieManager = $World/Zombies
@@ -94,6 +96,16 @@ func _ready() -> void:
 	weapons.ammo_changed.connect(_hud.set_ammo)
 	weapons.reload_started.connect(_hud.show_reload)
 	_hud.switch_weapon_pressed.connect(weapons.cycle_weapon)
+	_hud.reload_pressed.connect(weapons.reload)
+
+	var bag := _hud.bag_panel
+	_hud.bag_pressed.connect(open_bag)
+	_hud.medkit_pressed.connect(_quick_use.bind(ItemDef.Kind.MEDKIT))
+	bag.use_requested.connect(_on_bag_use)
+	bag.drop_requested.connect(drop_item)
+	bag.closed.connect(_on_bag_closed)
+	state.inventory.changed.connect(_refresh_quick_buttons)
+	_refresh_quick_buttons()
 
 	_apply_upgrades()
 	_hud.set_hp(_player.health.hp, _player.health.max_hp)
@@ -122,10 +134,110 @@ func _apply_upgrades() -> void:
 	var level_of := SaveService.get_upgrade_level
 	var health := _player.health
 	health.set_max_hp(health.max_hp + catalog.bonus(UpgradeDef.Stat.MAX_HP, level_of))
-	_player.weapons.damage_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.DAMAGE, level_of)
+	_base_damage_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.DAMAGE, level_of)
+	_player.weapons.damage_multiplier = _base_damage_multiplier + state.damage_bonus
 	_player.weapons.start_ammo_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.START_AMMO, level_of)
 	_player.move_speed *= 1.0 + catalog.bonus(UpgradeDef.Stat.MOVE_SPEED, level_of)
 	_coins.magnet_radius *= 1.0 + catalog.bonus(UpgradeDef.Stat.MAGNET, level_of)
+
+
+## Opens the bag and pauses the run until it is closed.
+func open_bag() -> void:
+	if _player.health.is_dead() or _hud.bag_panel.visible:
+		return
+	get_tree().paused = true
+	_hud.bag_panel.open(state.inventory)
+
+
+## Uses one unit from bag `slot`. False (nothing consumed) if the slot is empty,
+## the item isn't usable from the bag, or it would do nothing (e.g. full HP).
+func use_item(slot: int) -> bool:
+	var inventory := state.inventory
+	if slot < 0 or slot >= inventory.capacity or inventory.is_empty_slot(slot):
+		return false
+	var def := inventory.get_def(slot)
+	if not def.is_usable_from_bag() or _player.health.is_dead():
+		return false
+	var feedback := _apply_item(def)
+	if feedback.is_empty():
+		_notify("HP FULL" if def.kind == ItemDef.Kind.MEDKIT else "CAN'T USE")
+		return false
+	inventory.remove_at(slot, 1)
+	_notify(feedback)
+	return true
+
+
+## Throws away the whole stack in `slot`. Returns the units removed.
+## Phase 17 turns dropped items into pickups on the ground.
+func drop_item(slot: int) -> int:
+	var inventory := state.inventory
+	if slot < 0 or slot >= inventory.capacity or inventory.is_empty_slot(slot):
+		return 0
+	var def := inventory.get_def(slot)
+	var dropped := inventory.remove_at(slot, inventory.get_count(slot))
+	_notify("DROPPED %s" % def.display_name.to_upper())
+	return dropped
+
+
+## Applies one unit of `def`. Returns the feedback text, or "" if it had no
+## effect (so the caller keeps the item).
+func _apply_item(def: ItemDef) -> String:
+	var health := _player.health
+	match def.kind:
+		ItemDef.Kind.MEDKIT:
+			if health.hp >= health.max_hp:
+				return ""
+			var before := health.hp
+			health.heal(def.value)
+			return "+%d HP" % roundi(health.hp - before)
+		ItemDef.Kind.DAMAGE_BOOST:
+			state.damage_bonus += def.value
+			_player.weapons.damage_multiplier = _base_damage_multiplier + state.damage_bonus
+			return "+%d%% DAMAGE" % roundi(def.value * 100.0)
+		ItemDef.Kind.MAX_HP_BOOST:
+			state.max_hp_bonus += def.value
+			health.set_max_hp(health.max_hp + def.value, false)
+			health.heal(def.value)
+			return "+%d MAX HP" % roundi(def.value)
+	return ""
+
+
+## Quick button: uses the smallest stack of the first item of `kind`.
+func _quick_use(kind: ItemDef.Kind) -> void:
+	var slot := state.inventory.smallest_slot_where(func(def: ItemDef) -> bool: return def.kind == kind)
+	if slot != -1:
+		use_item(slot)
+
+
+func _count_kind(kind: ItemDef.Kind) -> int:
+	return state.inventory.count_where(func(def: ItemDef) -> bool: return def.kind == kind)
+
+
+func _refresh_quick_buttons() -> void:
+	_hud.set_quick_counts(_count_kind(ItemDef.Kind.MEDKIT), _count_kind(ItemDef.Kind.GRENADE))
+
+
+func _on_bag_use(slot: int) -> void:
+	use_item(slot)
+
+
+func _on_bag_closed() -> void:
+	get_tree().paused = false
+
+
+## Feedback goes to the bag's details row while it's open (the HUD toast is
+## paused with the run), otherwise to the HUD toast.
+func _notify(text: String) -> void:
+	if _hud.bag_panel.visible:
+		_hud.bag_panel.show_message(text)
+	else:
+		_hud.show_toast(text)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(&"open_inventory"):
+		open_bag()
+		get_viewport().set_input_as_handled()
 
 
 func _vibrate_on_hurt() -> void:
@@ -147,6 +259,14 @@ func _wire_debug_overlay() -> void:
 	overlay.coins = _coins
 	overlay.spawn_requested.connect(_debug_spawn)
 	overlay.clear_requested.connect(_zombies.clear)
+	overlay.items_requested.connect(_debug_give_items)
+
+
+## Debug: one of every item (a full stack of ammo), until loot exists.
+func _debug_give_items() -> void:
+	for item in catalog.items:
+		state.inventory.add(item, item.stack_limit if item.kind == ItemDef.Kind.AMMO else 1)
+	_hud.show_toast("+ITEMS")
 
 
 func _debug_spawn(count: int) -> void:
@@ -223,6 +343,9 @@ func _on_player_died() -> void:
 	# Coins still on the ground are lost; none can be collected after banking.
 	_coins.target = null
 	_supplies.target = null
+	# Everything in the bag belonged to this run.
+	_hud.bag_panel.close()
+	state.inventory.clear()
 	_director.stop()
 	_hud.hide_break()
 	# Commit results right away, so quitting during the delay loses nothing.

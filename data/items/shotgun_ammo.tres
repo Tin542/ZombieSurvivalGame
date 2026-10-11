@@ -6,6 +6,7 @@
 script = ExtResource("1_item")
 id = &"shotgun_ammo"
 display_name = "Shells"
+short_name = "SHEL"
 color = Color(0.95, 0.45, 0.2, 1)
 kind = 0
 stack_limit = 12

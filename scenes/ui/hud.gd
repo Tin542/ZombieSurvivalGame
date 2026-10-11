@@ -6,6 +6,10 @@ extends CanvasLayer
 
 signal switch_weapon_pressed
 signal skip_break_pressed
+signal bag_pressed
+signal medkit_pressed
+signal reload_pressed
+signal grenade_pressed
 
 const BANNER_HOLD := 1.4
 const BANNER_FADE := 0.4
@@ -40,11 +44,20 @@ var _fps_timer := 0.0
 @onready var _countdown_label: Label = %CountdownLabel
 @onready var _skip_button: Button = %SkipButton
 @onready var _damage_flash: ColorRect = %DamageFlash
+@onready var _medkit_button: Button = %MedkitButton
+@onready var _grenade_button: Button = %GrenadeButton
+## The bag view. The run opens it (and pauses) and handles its signals.
+@onready var bag_panel: InventoryPanel = %InventoryPanel
 
 
 func _ready() -> void:
 	_switch_button.pressed.connect(switch_weapon_pressed.emit)
 	_skip_button.pressed.connect(skip_break_pressed.emit)
+	%BagButton.pressed.connect(bag_pressed.emit)
+	%ReloadButton.pressed.connect(reload_pressed.emit)
+	_medkit_button.pressed.connect(medkit_pressed.emit)
+	_grenade_button.pressed.connect(grenade_pressed.emit)
+	set_quick_counts(0, 0)
 	_damage_flash.modulate.a = 0.0
 	_banner.hide()
 	_toast.hide()
@@ -85,6 +98,14 @@ func set_ammo(magazine: int, reserve: int, infinite: bool) -> void:
 
 func show_reload(_duration: float) -> void:
 	_ammo_label.text = "RELOAD..."
+
+
+## Quick-use buttons show what's left in the bag and grey out when empty.
+func set_quick_counts(medkits: int, grenades: int) -> void:
+	_medkit_button.text = "MED %d" % medkits
+	_medkit_button.disabled = medkits == 0
+	_grenade_button.text = "GREN %d" % grenades
+	_grenade_button.disabled = grenades == 0
 
 
 func set_switch_visible(show: bool) -> void:

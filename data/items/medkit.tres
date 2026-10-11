@@ -6,6 +6,7 @@
 script = ExtResource("1_item")
 id = &"medkit"
 display_name = "Medkit"
+short_name = "MED"
 color = Color(0.92, 0.92, 0.88, 1)
 kind = 1
 stack_limit = 3

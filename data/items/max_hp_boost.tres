@@ -6,6 +6,7 @@
 script = ExtResource("1_item")
 id = &"max_hp_boost"
 display_name = "Vitality Shot"
+short_name = "VIT"
 color = Color(0.4, 0.8, 0.5, 1)
 kind = 4
 stack_limit = 3

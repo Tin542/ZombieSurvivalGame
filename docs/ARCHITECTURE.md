@@ -28,7 +28,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/projectiles/` | `ProjectileManager` |
 | `scenes/pickups/` | `CoinManager`, `SupplyManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
-| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), game-over screen, debug overlay |
+| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions, quick buttons), `InventoryPanel` + `InventorySlotButton`, game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
 
 ## Game rules decided
@@ -123,6 +123,18 @@ Supplies (25) check crate pickups.
   fit, so callers keep the rest (pickups stay on the ground). `take()` drains
   the smallest stacks first. `to_entries()` / `add_entries()` convert to plain
   `{id, count}` data for saving.
+- The run's bag is `RunState.inventory` (8 slots; shop upgrade later). It
+  and the run-only boosts (`damage_bonus`, `max_hp_bonus`) die with the run;
+  `_on_player_died` empties it.
+- Bag UI: `Hud.bag_pressed` (or `open_inventory`) → `run.open_bag()` pauses
+  the tree and opens `InventoryPanel` (process mode ALWAYS). The panel only
+  emits `use_requested` / `drop_requested` / `closed`; `run.use_item(slot)`
+  applies the effect via `_apply_item()` and consumes one unit only if it did
+  something (medkit at full HP is refused). Feedback goes to the panel while
+  it's open (HUD tweens are paused), otherwise to the HUD toast.
+- Quick buttons (HUD): MED → `run._quick_use(MEDKIT)` (smallest stack
+  first), RELOAD → `WeaponHolder.reload()`, GREN shows the count (Phase 18).
+  Counts refresh on `Inventory.changed`.
 - Decided rules (Phases 15–20): reserve ammo lives in the bag; boosts last the
   run only; shop items go to a permanent stash and only what's brought into a
   run is lost on death; opening the bag pauses; pickups last 30 s.
@@ -164,4 +176,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
 ```

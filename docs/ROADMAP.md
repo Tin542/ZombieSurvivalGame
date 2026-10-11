@@ -18,8 +18,8 @@
 | 12 | Shop | ✅ | 5 levelled upgrades (Toughness, Firepower, Sprint, Coin Magnet, Ammo Pouch) + SMG / Shotgun unlocks from `ShopCatalog`. Atomic purchases; owned levels applied at run start |
 | 13 | Save system | ✅ | Versioned JSON with step-by-step migration (v2 adds lifetime stats). Rotating `.bak`, per-session backup, corrupt-file recovery, interrupted-write cleanup, newer-format protection. Run coins banked at wave clear / app pause / close / death. Reset progress (2 taps). Tests isolated to `test_save.json` |
 | 14 | Inventory core + item data | ✅ | `ItemDef` (ammo, medkit, grenade, damage / max-HP boosts; per-item `stack_limit`), `Inventory` (pure logic: stacking, partial adds, take smallest-first, capacity, plain-data entries), 6 items in `data/items/`, `ShopCatalog.items` + `find_item`, `WeaponDef.ammo_item`. No gameplay change yet |
-| 15 | In-game inventory UI | ⬜ | Bag panel (pauses), USE / DROP; quick buttons for grenade, medkit, reload |
-| 16 | Item effects + ammo from inventory | ⬜ | Reloads draw from the bag; medkit, run-only damage / max-HP boosts; supply crates give medkits / ammo items |
+| 15 | In-game inventory UI | ✅ | Bag (BAG button / I / B) pauses the run: 8-slot grid, select → USE / DROP (whole stack), CLOSE / Esc / Android back. Quick buttons: GREN (count; throwing in Phase 18), MED (uses one), RELOAD (`WeaponHolder.reload()`). Medkit / Rage Pill / Vitality Shot effects (run-only boosts). Bag emptied on death. Debug “+Items”. Drop-to-ground comes with Phase 17 |
+| 16 | Ammo from inventory + supply items | ⬜ | Reloads draw from the bag, starting ammo in the bag; supply crates give medkits / ammo items (crate stays if the bag is full) |
 | 17 | Zombie loot + pickups | ⬜ | Independent drops per `ZombieDef`; pickups last 30 s, stay when the bag is full; drop-to-ground |
 | 18 | Grenades + aim stick | ⬜ | Drag the grenade button to aim, release to throw; blast via the zombie grid; no self-damage; Firepower applies |
 | 19 | Shop items + stash + loadout | ⬜ | Items bought into a permanent stash; PREPARE panel (+/−, remembers last loadout); bag-size upgrade |
@@ -40,6 +40,7 @@
 | `tests/shop_test.gd` | Pricing, atomic purchases on disk, settings persistence + volume, menu/shop/settings UI, upgrades + unlocks applied in a run |
 | `tests/save_system_test.gd` | Migration, backup rotation, session backup, corruption recovery, interrupted writes, newer-format saves, stats, reset, mid-run banking |
 | `tests/inventory_test.gd` | Item data, stacking, partial / full adds, take / remove, capacity, entries round trip |
+| `tests/inventory_ui_test.gd` | Quick buttons, pause while open, slot selection rules, USE / DROP, medkit / boost effects, manual reload, close, death clears the bag |
 
 Run any of them with:
 ```

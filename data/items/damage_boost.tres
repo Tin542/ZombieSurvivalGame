@@ -6,6 +6,7 @@
 script = ExtResource("1_item")
 id = &"damage_boost"
 display_name = "Rage Pill"
+short_name = "RAGE"
 color = Color(0.9, 0.3, 0.3, 1)
 kind = 3
 stack_limit = 3

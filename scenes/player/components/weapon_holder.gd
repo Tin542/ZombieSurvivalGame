@@ -93,6 +93,18 @@ func cycle_weapon() -> void:
 		switch_to(next)
 
 
+## Starts a manual reload (quick button). False if already reloading, the
+## magazine is full or there is nothing to reload with.
+func reload() -> bool:
+	if _current == -1 or is_reloading():
+		return false
+	var slot := _slots[_current]
+	if not slot.can_reload():
+		return false
+	_start_reload(slot)
+	return true
+
+
 ## True if any weapon in the loadout runs on limited ammo (so ammo pickups
 ## are worth anything).
 func has_limited_ammo() -> bool:
