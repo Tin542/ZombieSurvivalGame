@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="WeaponDef" format=3]
 
 [ext_resource type="Script" path="res://resources/weapon_def.gd" id="1_wdef"]
+[ext_resource type="Resource" path="res://data/items/shotgun_ammo.tres" id="2_ammo"]
 
 [resource]
 script = ExtResource("1_wdef")
@@ -17,6 +18,7 @@ knockback = 5.0
 magazine_size = 6
 reload_time = 1.6
 infinite_ammo = false
+ammo_item = ExtResource("2_ammo")
 max_reserve_ammo = 48
 start_reserve_ammo = 24
 unlock_cost = 500

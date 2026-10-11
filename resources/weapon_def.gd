@@ -25,6 +25,9 @@ extends Resource
 @export var magazine_size: int = 12
 @export var reload_time: float = 1.0
 @export var infinite_ammo: bool = false
+## Inventory item this weapon's reserve is made of. Null = the weapon keeps
+## its own reserve (or none, with infinite_ammo).
+@export var ammo_item: ItemDef
 ## Reserve ammo cap (ignored when infinite_ammo).
 @export var max_reserve_ammo: int = 120
 ## Reserve ammo at the start of a run (clamped to max_reserve_ammo).
