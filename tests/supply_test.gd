@@ -1,6 +1,7 @@
 extends SceneTree
 ## Headless checks for the supply phase: crates only after a cleared wave,
-## placement, landing before pickup, health/ammo effects, crate planning,
+## placement, landing before pickup, medkit / ammo items into the bag, crate
+## staying when the bag is full, crate planning,
 ## cleanup when the next wave starts, no pickup after death.
 ## Run: godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 ## Exits with code 1 if any check fails. The real save is restored afterwards.
@@ -80,33 +81,59 @@ func _initialize() -> void:
 	player.global_position = home
 	await _frames(1)
 
-	# --- Health crate heals the configured fraction --------------------------
+	# --- Health crate puts medkits in the bag -------------------------------
+	var bag: Inventory = run.state.inventory
+	var medkit: ItemDef = table.supply_medkit
+	_check(medkit != null and medkit.kind == ItemDef.Kind.MEDKIT, "wave table names the medkit item")
 	player.health.set_max_hp(100.0)
 	player.health.take_damage(60.0)
+	var medkits_before := bag.count_of(medkit)
 	collected.clear()
-	_walk_to_kind(supplies, player, HEALTH)
+	if not _walk_to_kind(supplies, player, HEALTH):
+		var one_health: Array[SupplyManager.Kind] = [HEALTH]
+		supplies.drop_crates(one_health, 5.0)
+		await _frames(40)
+		_walk_to_kind(supplies, player, HEALTH)
 	await _frames(2)
-	if collected == [HEALTH]:
-		_check(is_equal_approx(player.health.hp, 40.0 + 100.0 * table.supply_heal_fraction), "health crate heals %d%% (hp=%.0f)" % [table.supply_heal_fraction * 100, player.health.hp])
-		_check(hud.get_node("%Toast").text == "+35 HP", "HUD shows +35 HP")
-	else:
-		_check(false, "health crate available to test healing")
+	_check(collected == [HEALTH], "health crate collected")
+	_check(bag.count_of(medkit) == medkits_before + table.supply_medkits, "health crate adds %d medkit(s) to the bag" % table.supply_medkits)
+	_check(is_equal_approx(player.health.hp, 40.0), "no instant heal any more")
+	_check(hud.get_node("%Toast").text == "+%d MEDKIT" % table.supply_medkits, "HUD shows +1 MEDKIT")
 
-	# --- Ammo crate refills limited weapons ----------------------------------
-	var smg_slot = player.weapons._slots[1]
-	smg_slot.reserve = 0
+	# --- Ammo crate puts ammo items in the bag --------------------------------
+	var smg_ammo: ItemDef = SMG.ammo_item
+	bag.take(smg_ammo, bag.count_of(smg_ammo))
 	collected.clear()
-	if _walk_to_kind(supplies, player, AMMO):
-		await _frames(2)
-		_check(smg_slot.reserve == ceili(SMG.max_reserve_ammo * table.supply_ammo_fraction), "ammo crate refills reserve (%d)" % smg_slot.reserve)
-	else:
+	if not _walk_to_kind(supplies, player, AMMO):
 		# The test already used up the only ammo crate above; drop one to test.
 		var one_ammo: Array[SupplyManager.Kind] = [AMMO]
 		supplies.drop_crates(one_ammo, 5.0)
 		await _frames(40)
 		_walk_to_kind(supplies, player, AMMO)
-		await _frames(2)
-		_check(smg_slot.reserve == ceili(SMG.max_reserve_ammo * table.supply_ammo_fraction), "ammo crate refills reserve (%d)" % smg_slot.reserve)
+	await _frames(2)
+	_check(bag.count_of(smg_ammo) == ceili(SMG.max_reserve_ammo * table.supply_ammo_fraction), "ammo crate adds SMG ammo to the bag (%d)" % bag.count_of(smg_ammo))
+	_check(player.weapons.reserve_count(1) == bag.count_of(smg_ammo), "SMG reserve is the bag ammo")
+
+	# --- Full bag: the crate stays until there's room --------------------------
+	player.global_position = home
+	var one_more: Array[SupplyManager.Kind] = [HEALTH]
+	supplies.drop_crates(one_more, 5.0)
+	await _frames(40)
+	bag.take(medkit, bag.count_of(medkit))  # no open medkit stack to top up
+	var filler := ItemDef.new()
+	filler.id = &"test_filler"
+	filler.stack_limit = 1
+	bag.add(filler, bag.capacity)
+	collected.clear()
+	_walk_to_kind(supplies, player, HEALTH)
+	await _frames(10)
+	_check(collected.is_empty() and supplies.active_count() == 1, "full bag: health crate stays on the ground")
+	_check(hud.get_node("%Toast").text == "BAG FULL", "HUD says BAG FULL")
+	bag.take(filler, 1)
+	await _frames(2)
+	_check(collected == [HEALTH] and supplies.active_count() == 0, "crate collected once a slot frees up")
+	bag.take(filler, bag.capacity)
+	player.global_position = home
 
 	# --- Next wave removes leftovers ----------------------------------------
 	var leftovers: Array[SupplyManager.Kind] = [HEALTH, HEALTH]
@@ -121,8 +148,8 @@ func _initialize() -> void:
 	player.health.take_damage(80.0)  # hp 20%, ammo still mostly full
 	_check(run._plan_crates(4) == [HEALTH, AMMO, HEALTH, HEALTH], "low HP: extras are health")
 	player.health.set_max_hp(100.0)
+	bag.clear()
 	for slot in weapons._slots:
-		slot.reserve = 0
 		slot.magazine = 0
 	_check(run._plan_crates(4) == [HEALTH, AMMO, AMMO, AMMO], "low ammo: extras are ammo")
 	var pistol_only: Array[WeaponDef] = [PISTOL]

@@ -19,7 +19,7 @@
 | 13 | Save system | ✅ | Versioned JSON with step-by-step migration (v2 adds lifetime stats). Rotating `.bak`, per-session backup, corrupt-file recovery, interrupted-write cleanup, newer-format protection. Run coins banked at wave clear / app pause / close / death. Reset progress (2 taps). Tests isolated to `test_save.json` |
 | 14 | Inventory core + item data | ✅ | `ItemDef` (ammo, medkit, grenade, damage / max-HP boosts; per-item `stack_limit`), `Inventory` (pure logic: stacking, partial adds, take smallest-first, capacity, plain-data entries), 6 items in `data/items/`, `ShopCatalog.items` + `find_item`, `WeaponDef.ammo_item`. No gameplay change yet |
 | 15 | In-game inventory UI | ✅ | Bag (BAG button / I / B) pauses the run: 8-slot grid, select → USE / DROP (whole stack), CLOSE / Esc / Android back. Quick buttons: GREN (count; throwing in Phase 18), MED (uses one), RELOAD (`WeaponHolder.reload()`). Medkit / Rage Pill / Vitality Shot effects (run-only boosts). Bag emptied on death. Debug “+Items”. Drop-to-ground comes with Phase 17 |
-| 16 | Ammo from inventory + supply items | ⬜ | Reloads draw from the bag, starting ammo in the bag; supply crates give medkits / ammo items (crate stays if the bag is full) |
+| 16 | Ammo from inventory + supply items | ✅ | Reserve ammo = bag ammo (`WeaponDef.ammo_item`; reload takes it when it finishes); starting ammo (with Ammo Pouch) stocked into the bag; HUD reserve = bag count. Health crate → medkit into the bag, ammo crate → ammo items; crate stays when the bag is full (“BAG FULL”). Ammo stacks 120 (SMG) / 24 (shells) so each weapon starts in one slot |
 | 17 | Zombie loot + pickups | ⬜ | Independent drops per `ZombieDef`; pickups last 30 s, stay when the bag is full; drop-to-ground |
 | 18 | Grenades + aim stick | ⬜ | Drag the grenade button to aim, release to throw; blast via the zombie grid; no self-damage; Firepower applies |
 | 19 | Shop items + stash + loadout | ⬜ | Items bought into a permanent stash; PREPARE panel (+/−, remembers last loadout); bag-size upgrade |
@@ -31,12 +31,12 @@
 | Test | Covers |
 |---|---|
 | `tests/zombie_stress_test.gd` | ZombieManager tick cost at 400 zombies |
-| `tests/weapon_smoke_test.gd` | Auto-aim, firing, kills, reload, weapon fallback, ammo refill, bullet cost |
+| `tests/weapon_smoke_test.gd` | Auto-aim, firing, kills, reload from the bag, HUD reserve, weapon fallback, late ammo pickup, bullet cost |
 | `tests/spawner_test.gd` | Off-screen placement, cap/backpressure, pacing, wave type mix |
 | `tests/wave_director_test.gd` | Wave loop, clear conditions, break skip/timeout, stop on death |
 | `tests/coin_test.gd` | Kill drops, magnet pickup, wave-clear vacuum, full pool, no pickup after death |
 | `tests/game_over_test.gd` | Hurt feedback, results saved on death, game-over screen + button lock |
-| `tests/supply_test.gd` | Crate drop timing, placement, landing, heal/ammo effects, crate planning, cleanup, no pickup after death |
+| `tests/supply_test.gd` | Crate drop timing, placement, landing, medkit / ammo items into the bag, crate stays when the bag is full, crate planning, cleanup, no pickup after death |
 | `tests/shop_test.gd` | Pricing, atomic purchases on disk, settings persistence + volume, menu/shop/settings UI, upgrades + unlocks applied in a run |
 | `tests/save_system_test.gd` | Migration, backup rotation, session backup, corruption recovery, interrupted writes, newer-format saves, stats, reset, mid-run banking |
 | `tests/inventory_test.gd` | Item data, stacking, partial / full adds, take / remove, capacity, entries round trip |

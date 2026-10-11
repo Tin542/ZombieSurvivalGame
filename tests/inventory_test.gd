@@ -29,14 +29,18 @@ func _initialize() -> void:
 	_check(ids.size() == CATALOG.items.size(), "item ids are unique")
 
 	# --- Stacking ------------------------------------------------------------
+	# A local item, so balance changes to the real stack limits never break this.
+	var ammo := ItemDef.new()
+	ammo.id = &"test_ammo"
+	ammo.stack_limit = 60
 	var inv := Inventory.new(8)
 	var changes := [0]
 	inv.changed.connect(func() -> void: changes[0] += 1)
 	_check(inv.capacity == 8 and inv.used_slots() == 0, "starts with 8 empty slots")
-	_check(inv.add(SMG_AMMO, 100) == 100, "adds 100 SMG ammo")
+	_check(inv.add(ammo, 100) == 100, "adds 100 ammo")
 	_check(inv.used_slots() == 2 and inv.get_count(0) == 60 and inv.get_count(1) == 40, "splits into 60 + 40")
-	_check(inv.add(SMG_AMMO, 30) == 30 and inv.get_count(1) == 60 and inv.get_count(2) == 10, "tops up the open stack first")
-	_check(inv.count_of(SMG_AMMO) == 130, "count_of sums stacks")
+	_check(inv.add(ammo, 30) == 30 and inv.get_count(1) == 60 and inv.get_count(2) == 10, "tops up the open stack first")
+	_check(inv.count_of(ammo) == 130, "count_of sums stacks")
 	_check(inv.add(MEDKIT, 2) == 2 and inv.get_def(3) == MEDKIT, "different item takes its own slot")
 	_check(changes[0] == 3, "changed fires once per add")
 
@@ -51,10 +55,10 @@ func _initialize() -> void:
 	_check(changes[0] == before, "no changed signal when nothing fit")
 
 	# --- Take / remove ------------------------------------------------------
-	_check(inv.take(SMG_AMMO, 15) == 15, "take 15 SMG ammo")
+	_check(inv.take(ammo, 15) == 15, "take 15 ammo")
 	_check(inv.get_count(2) == 0 and inv.is_empty_slot(2), "smallest stack drained first, slot freed")
 	_check(inv.get_count(0) == 60 and inv.get_count(1) == 55, "then the next smallest")
-	_check(inv.take(SMG_AMMO, 999) == 115 and inv.count_of(SMG_AMMO) == 0, "take more than owned returns owned")
+	_check(inv.take(ammo, 999) == 115 and inv.count_of(ammo) == 0, "take more than owned returns owned")
 	_check(inv.take(SHELLS, 1) == 0, "take missing item returns 0")
 	_check(inv.remove_at(3, 2) == 2 and inv.get_count(3) == 1, "remove_at takes from one slot")
 	_check(inv.remove_at(3, 9) == 1 and inv.is_empty_slot(3), "remove_at empties the slot")
@@ -69,10 +73,11 @@ func _initialize() -> void:
 
 	# --- Entries round trip -------------------------------------------------
 	var src := Inventory.new(8)
-	src.add(SMG_AMMO, 70)
+	var full: int = SMG_AMMO.stack_limit
+	src.add(SMG_AMMO, full + 10)
 	src.add(GRENADE, 2)
 	var entries := src.to_entries()
-	_check(entries == [{"id": "smg_ammo", "count": 60}, {"id": "smg_ammo", "count": 10}, {"id": "grenade", "count": 2}], "to_entries is plain data")
+	_check(entries == [{"id": "smg_ammo", "count": full}, {"id": "smg_ammo", "count": 10}, {"id": "grenade", "count": 2}], "to_entries is plain data")
 	var copy := Inventory.new(8)
 	var bad: Array = entries + [{"id": "ghost", "count": 5}, {"id": "medkit", "count": -3}, "junk"]
 	_check(copy.add_entries(bad, CATALOG.find_item) == 0, "unknown ids and bad counts skipped")

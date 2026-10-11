@@ -64,8 +64,17 @@ Supplies (25) check crate pickups.
 ## Combat
 - `AutoAim` follows its target via uid each tick; nearest-search runs at 10 Hz
   or when the target is lost.
-- `WeaponHolder` owns the loadout and per-weapon ammo; emits
+- `WeaponHolder` owns the loadout and magazines; emits
   `projectile_requested`, which `run.gd` connects to `ProjectileManager.spawn`.
+- Reserve ammo is bag ammo: a weapon with `WeaponDef.ammo_item` draws its
+  reserve from `WeaponHolder.ammo_source` (= `RunState.inventory`, set before
+  `set_loadout`). Ammo is taken when a reload *finishes*, so bag changes
+  mid-reload are safe. The HUD reserve is `count_of(ammo_item)`, refreshed on
+  every bag change (except mid-reload). Weapons without an ammo_item keep
+  their own `reserve` (old path). Starting reserve (Ammo Pouch applied) comes
+  from `starting_ammo()`, which `run._stock_starting_ammo()` puts in the bag;
+  overflow is lost until Phase 17 drops it on the ground.
+- Manual reload: `WeaponHolder.reload()` (HUD RELOAD button).
 - Projectiles move on the ground plane (zombie feet) and are drawn 6 px higher.
 
 ## Money
@@ -90,9 +99,13 @@ Supplies (25) check crate pickups.
   `min_spacing`), fall in over `DROP_TIME` and can only be picked up once landed;
   they blink near the end of the break. The `Indicators` child (z 50) draws
   edge arrows for off-screen crates.
-- `SupplyManager.collected(kind)` → `run.gd` applies `WaveTable.supply_heal_fraction`
-  (`HealthComponent.heal`) or `supply_ammo_fraction` (`WeaponHolder.add_ammo`) and
-  shows a HUD toast.
+- Touching a landed crate calls `SupplyManager.accept` (`run._accept_supply`).
+  Health crates put `WaveTable.supply_medkits` × `supply_medkit` in the bag;
+  ammo crates put `WeaponHolder.ammo_refill(supply_ammo_fraction)` ammo items
+  in it (plus `add_ammo()` for own-reserve weapons). If nothing fits, accept
+  returns false: the crate stays and "BAG FULL" shows (throttled to 1/s). A
+  partly fitting ammo crate is used up. `collected` fires only for crates
+  actually taken.
 
 ## Shop + settings
 - `ShopCatalog` (`data/shop_catalog.tres`) lists `UpgradeDef`s (levelled, cost

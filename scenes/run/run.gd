@@ -17,6 +17,7 @@ const GAME_OVER_DELAY := 1.0
 ## landing hits every frame doesn't keep the motor running.
 const HURT_VIBRATION_MS := 40
 const HURT_VIBRATION_COOLDOWN := 0.35
+const BAG_FULL_TOAST_COOLDOWN := 1.0
 
 ## Shop items: weapons (in loadout order; locked ones are filtered out) and
 ## the upgrades whose owned levels are applied at the start of the run.
@@ -29,6 +30,7 @@ const HURT_VIBRATION_COOLDOWN := 0.35
 var state := RunState.new()
 
 var _last_vibration_ms := -100000
+var _last_bag_full_ms := -100000
 ## Run coins already added to SaveService (progress is banked in steps, see
 ## _bank_progress), and the best wave before this run, for the NEW BEST check.
 var _banked_coins := 0
@@ -87,7 +89,7 @@ func _ready() -> void:
 
 	_supplies.setup(bounds)
 	_supplies.target = _player
-	_supplies.collected.connect(_on_supply_collected)
+	_supplies.accept = _accept_supply
 
 	var weapons := _player.weapons
 	_player.aim.zombies = _zombies
@@ -110,7 +112,9 @@ func _ready() -> void:
 	_apply_upgrades()
 	_hud.set_hp(_player.health.hp, _player.health.max_hp)
 	_hud.set_fps_visible(SaveService.get_setting("show_fps"))
+	weapons.ammo_source = state.inventory
 	weapons.set_loadout(_build_loadout())
+	_stock_starting_ammo()
 	_hud.set_switch_visible(weapons.weapon_count() > 1)
 
 	if OS.is_debug_build():
@@ -320,17 +324,47 @@ func _plan_crates(count: int) -> Array[SupplyManager.Kind]:
 	return kinds
 
 
-func _on_supply_collected(kind: SupplyManager.Kind, _position: Vector2) -> void:
+## Reserve ammo for the loadout goes into the bag. What doesn't fit is lost
+## for now; Phase 17 drops it on the ground next to the player.
+func _stock_starting_ammo() -> void:
+	var kit := _player.weapons.starting_ammo()
+	for item in kit:
+		state.inventory.add(item, kit[item])
+
+
+## SupplyManager asks this when the player touches a landed crate. Crates put
+## items in the bag; if nothing fits, the crate stays on the ground.
+## An ammo crate that only partly fits is still used up.
+func _accept_supply(kind: SupplyManager.Kind, _position: Vector2) -> bool:
+	var inventory := state.inventory
 	match kind:
 		SupplyManager.Kind.HEALTH:
-			var health := _player.health
-			var before := health.hp
-			health.heal(health.max_hp * wave_table.supply_heal_fraction)
-			var gained := roundi(health.hp - before)
-			_hud.show_toast("+%d HP" % gained if gained > 0 else "HP FULL")
+			var medkit := wave_table.supply_medkit
+			var added := inventory.add(medkit, wave_table.supply_medkits)
+			if added == 0:
+				_notify_bag_full()
+				return false
+			_hud.show_toast("+%d %s" % [added, medkit.display_name.to_upper()])
 		SupplyManager.Kind.AMMO:
-			_player.weapons.add_ammo(wave_table.supply_ammo_fraction)
-			_hud.show_toast("+AMMO")
+			var refill := _player.weapons.ammo_refill(wave_table.supply_ammo_fraction)
+			var added := 0
+			for item in refill:
+				added += inventory.add(item, refill[item])
+			if not refill.is_empty() and added == 0:
+				_notify_bag_full()
+				return false
+			_player.weapons.add_ammo(wave_table.supply_ammo_fraction)  # weapons with their own reserve
+			_hud.show_toast("+%d AMMO" % added if added > 0 else "+AMMO")
+	return true
+
+
+## "BAG FULL" toast, at most once a second (pickups ask every tick).
+func _notify_bag_full() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_bag_full_ms < BAG_FULL_TOAST_COOLDOWN * 1000.0:
+		return
+	_last_bag_full_ms = now
+	_hud.show_toast("BAG FULL")
 
 
 ## `position` is in ZombieManager space, which matches world space (both at the origin).

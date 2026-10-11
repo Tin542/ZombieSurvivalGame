@@ -36,6 +36,11 @@ const ARROW_SIZE := 5.0
 
 ## What collects crates. Null = nothing is collected.
 var target: Node2D
+## Asked when the target touches a landed crate: (kind, world_position) ->
+## bool. False leaves the crate on the ground (e.g. the bag is full), and it
+## is asked again on later ticks while the target stays on it. Unset = every
+## touched crate is collected.
+var accept: Callable
 
 var _bounds: Rect2
 var _crates: Array[Crate] = []
@@ -115,8 +120,11 @@ func _physics_process(delta: float) -> void:
 	for i in range(_crates.size() - 1, -1, -1):
 		var crate := _crates[i]
 		if crate.landed and crate.position.distance_squared_to(target_pos) <= reach_sq:
+			var at := to_global(crate.position)
+			if accept.is_valid() and not accept.call(crate.kind, at):
+				continue
 			_crates.remove_at(i)
-			collected.emit(crate.kind, to_global(crate.position))
+			collected.emit(crate.kind, at)
 			_redraw()
 
 
