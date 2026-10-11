@@ -120,11 +120,7 @@ func take(def: ItemDef, amount: int) -> int:
 		return 0
 	var left := amount
 	while left > 0:
-		var smallest := -1
-		for i in _slots.size():
-			var stack: Stack = _slots[i]
-			if stack != null and stack.def == def and (smallest == -1 or stack.count <= _slots[smallest].count):
-				smallest = i
+		var smallest := smallest_slot_where(func(item: ItemDef) -> bool: return item == def)
 		if smallest == -1:
 			break
 		left -= _remove(smallest, left)
@@ -132,6 +128,27 @@ func take(def: ItemDef, amount: int) -> int:
 	if taken > 0:
 		changed.emit()
 	return taken
+
+
+## Occupied slot with the smallest stack whose item passes `filter`
+## (ItemDef -> bool); ties go to the later slot. -1 if none. Quick-use buttons
+## use it so they empty partial stacks first, like take().
+func smallest_slot_where(filter: Callable) -> int:
+	var smallest := -1
+	for i in _slots.size():
+		var stack: Stack = _slots[i]
+		if stack != null and filter.call(stack.def) and (smallest == -1 or stack.count <= _slots[smallest].count):
+			smallest = i
+	return smallest
+
+
+## Total units of every item passing `filter` (ItemDef -> bool).
+func count_where(filter: Callable) -> int:
+	var total := 0
+	for stack: Stack in _slots:
+		if stack != null and filter.call(stack.def):
+			total += stack.count
+	return total
 
 
 ## Removes up to `amount` units from one slot. Returns how many were removed.

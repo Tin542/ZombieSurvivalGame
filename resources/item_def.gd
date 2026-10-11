@@ -19,6 +19,8 @@ enum Kind {
 
 @export var id: StringName
 @export var display_name: String
+## Up to 4 letters, for slots and quick buttons.
+@export var short_name: String
 @export var icon: Texture2D
 ## Placeholder colour for pickups and slots until icons exist.
 @export var color: Color = Color.WHITE
@@ -42,3 +44,25 @@ enum Kind {
 @export var fuse: float = 0.0
 ## Farthest landing point from the thrower, in pixels.
 @export var throw_range: float = 0.0
+
+
+## Can be used from the bag's USE button. Ammo is drawn automatically by
+## reloads and grenades are thrown with their quick button.
+func is_usable_from_bag() -> bool:
+	return kind in [Kind.MEDKIT, Kind.DAMAGE_BOOST, Kind.MAX_HP_BOOST]
+
+
+## One-line effect text for the bag's details row.
+func describe() -> String:
+	match kind:
+		Kind.AMMO:
+			return "Reserve ammo. Reloads use it automatically."
+		Kind.MEDKIT:
+			return "Restores %d HP." % roundi(value)
+		Kind.GRENADE:
+			return "%d blast damage. Throw with the grenade button." % roundi(damage)
+		Kind.DAMAGE_BOOST:
+			return "+%d%% weapon damage for this run." % roundi(value * 100.0)
+		Kind.MAX_HP_BOOST:
+			return "+%d max HP for this run." % roundi(value)
+	return ""

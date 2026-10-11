@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="WaveTable" format=3]
 
 [ext_resource type="Script" path="res://resources/wave_table.gd" id="1_table"]
+[ext_resource type="Resource" path="res://data/items/medkit.tres" id="6_medkit"]
 [ext_resource type="Script" path="res://resources/spawn_entry.gd" id="2_entry"]
 [ext_resource type="Resource" path="res://data/zombies/walker.tres" id="3_walker"]
 [ext_resource type="Resource" path="res://data/zombies/runner.tres" id="4_runner"]
@@ -28,3 +29,4 @@ min_wave = 5
 script = ExtResource("1_table")
 entries = Array[ExtResource("2_entry")]([SubResource("Resource_walker"), SubResource("Resource_runner"), SubResource("Resource_brute")])
 supply_duration = 12.0
+supply_medkit = ExtResource("6_medkit")

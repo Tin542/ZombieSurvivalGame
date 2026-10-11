@@ -130,7 +130,7 @@ func _initialize() -> void:
 	_check(is_equal_approx(player.move_speed, 80.0 * 1.06), "Sprint lv1: +6% speed")
 	_check(is_equal_approx(run.get_node("Coins").magnet_radius, 40.0 * 1.5), "Magnet lv2: +50% radius")
 	_check(weapons.weapon_count() == 2 and weapons._slots[1].def == SMG, "loadout = pistol + unlocked SMG only")
-	_check(weapons._slots[1].reserve == roundi(SMG.start_reserve_ammo * 1.25), "Ammo Pouch lv1: +25% starting reserve")
+	_check(run.state.inventory.count_of(SMG.ammo_item) == roundi(SMG.start_reserve_ammo * 1.25), "Ammo Pouch lv1: +25% starting ammo in the bag")
 	_check(run.get_node("HUD").get_node("%FpsLabel").visible, "show_fps setting shows HUD FPS")
 
 	_save.data = SaveData.from_dict(backup)

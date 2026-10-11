@@ -39,20 +39,25 @@ func _initialize() -> void:
 	_check(shots[0] > 0, "pistol fired")
 	_check(run.state.kills > 0, "pistol killed zombies")
 	_check(reloads[0] > 0, "pistol reloaded")
-	_check(weapons._slots[0].reserve == 0 and weapons._slots[0].def.infinite_ammo, "pistol ammo stays infinite")
+	_check(weapons.reserve_count(0) == 0 and weapons._slots[0].def.infinite_ammo, "pistol ammo stays infinite")
 
-	# --- SMG consumes reserve ---------------------------------------------
+	# --- SMG reloads from the bag ------------------------------------------
+	var smg_slot = weapons._slots[1]
+	var smg_ammo: ItemDef = smg_slot.def.ammo_item
+	var bag: Inventory = run.state.inventory
+	_check(bag.count_of(smg_ammo) == weapons.starting_reserve(smg_slot.def), "starting SMG ammo is in the bag")
 	zombies.clear()
 	weapons.switch_to(1)
-	var smg_slot = weapons._slots[1]
-	var reserve_before: int = smg_slot.reserve
+	var hud_ammo: Label = run.get_node("HUD").get_node("%AmmoLabel")
+	_check(hud_ammo.text == "%d / %d" % [smg_slot.magazine, bag.count_of(smg_ammo)], "HUD reserve = bag count")
+	var reserve_before: int = bag.count_of(smg_ammo)
 	spawner.spawn_burst(30, 1)
 	await _frames(60 * 20)
-	print("smg: reserve %d -> %d, mag=%d, kills=%d" % [reserve_before, smg_slot.reserve, smg_slot.magazine, run.state.kills])
-	_check(smg_slot.reserve < reserve_before, "smg spent reserve ammo")
+	print("smg: bag ammo %d -> %d, mag=%d, kills=%d" % [reserve_before, bag.count_of(smg_ammo), smg_slot.magazine, run.state.kills])
+	_check(bag.count_of(smg_ammo) < reserve_before, "smg reloads drew ammo from the bag")
 
 	# --- Dry weapon falls back --------------------------------------------
-	smg_slot.reserve = 0
+	bag.take(smg_ammo, bag.count_of(smg_ammo))
 	smg_slot.magazine = 0
 	weapons.switch_to(0)
 	weapons.switch_to(1)
@@ -61,9 +66,17 @@ func _initialize() -> void:
 	weapons.cycle_weapon()
 	_check(weapons.current_weapon().id != &"smg", "cycle skips dry smg")
 
-	# --- Ammo refill (supply crate hook) ----------------------------------
-	weapons.add_ammo(0.5)
-	_check(smg_slot.reserve == ceili(smg_slot.def.max_reserve_ammo * 0.5), "add_ammo refills reserve")
+	# --- Ammo picked up later is usable at once ----------------------------
+	spawner.stop()
+	zombies.clear()  # nothing to shoot, so only the reload touches the ammo
+	await _frames(1)
+	bag.add(smg_ammo, 45)
+	_check(weapons.reserve_count(1) == 45, "ammo added to the bag is the smg reserve")
+	weapons.switch_to(1)
+	_check(weapons.is_reloading(), "switching to the empty smg reloads from the bag")
+	await _frames(ceili(smg_slot.def.reload_time * 60) + 3)
+	_check(weapons.magazine_count(1) == smg_slot.def.magazine_size and bag.count_of(smg_ammo) == 45 - smg_slot.def.magazine_size, "reload took exactly one magazine")
+	_check(weapons.ammo_refill(0.5).get(smg_ammo) == ceili(smg_slot.def.max_reserve_ammo * 0.5), "ammo_refill sizes crate ammo")
 
 	# --- Projectile throughput --------------------------------------------
 	zombies.clear()

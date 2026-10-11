@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="2_bag"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
 bg_color = Color(0.1, 0.06, 0.06, 0.8)
@@ -218,3 +219,60 @@ size_flags_horizontal = 4
 focus_mode = 0
 theme_override_font_sizes/font_size = 10
 text = "START NOW"
+
+[node name="BagButton" type="Button" parent="."]
+unique_name_in_owner = true
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -116.0
+offset_top = 6.0
+offset_right = -72.0
+offset_bottom = 30.0
+grow_horizontal = 0
+focus_mode = 0
+theme_override_font_sizes/font_size = 10
+text = "BAG"
+
+[node name="QuickPanel" type="HBoxContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -228.0
+offset_top = -38.0
+offset_right = -92.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+alignment = 2
+theme_override_constants/separation = 4
+
+[node name="GrenadeButton" type="Button" parent="QuickPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 30)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 9
+text = "GREN 0"
+
+[node name="MedkitButton" type="Button" parent="QuickPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 30)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 9
+text = "MED 0"
+
+[node name="ReloadButton" type="Button" parent="QuickPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 30)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 9
+text = "RELOAD"
+
+[node name="InventoryPanel" parent="." instance=ExtResource("2_bag")]
+unique_name_in_owner = true

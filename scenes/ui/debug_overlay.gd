@@ -3,6 +3,7 @@ extends CanvasLayer
 
 signal spawn_requested(count: int)
 signal clear_requested
+signal items_requested
 
 const STATS_INTERVAL := 0.25
 
@@ -25,6 +26,7 @@ func _ready() -> void:
 	%Spawn50.pressed.connect(spawn_requested.emit.bind(50))
 	%Spawn200.pressed.connect(spawn_requested.emit.bind(200))
 	%Clear.pressed.connect(clear_requested.emit)
+	%Items.pressed.connect(items_requested.emit)
 
 
 func _process(delta: float) -> void:

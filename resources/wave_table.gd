@@ -24,9 +24,11 @@ extends Resource
 ## Length of the break between waves, when supply crates are on the ground.
 @export var supply_duration: float = 20.0
 @export var supply_crates: int = 3
-## Fraction of max HP a health crate restores.
-@export var supply_heal_fraction: float = 0.35
-## Fraction of each limited weapon's max reserve an ammo crate restores.
+## Item a health crate puts in the bag, and how many.
+@export var supply_medkit: ItemDef
+@export var supply_medkits: int = 1
+## Ammo an ammo crate gives each limited weapon, as a fraction of its
+## max_reserve_ammo.
 @export var supply_ammo_fraction: float = 0.4
 
 

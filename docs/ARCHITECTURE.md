@@ -28,7 +28,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/projectiles/` | `ProjectileManager` |
 | `scenes/pickups/` | `CoinManager`, `SupplyManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
-| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions), game-over screen, debug overlay |
+| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions, quick buttons), `InventoryPanel` + `InventorySlotButton`, game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
 
 ## Game rules decided
@@ -64,8 +64,17 @@ Supplies (25) check crate pickups.
 ## Combat
 - `AutoAim` follows its target via uid each tick; nearest-search runs at 10 Hz
   or when the target is lost.
-- `WeaponHolder` owns the loadout and per-weapon ammo; emits
+- `WeaponHolder` owns the loadout and magazines; emits
   `projectile_requested`, which `run.gd` connects to `ProjectileManager.spawn`.
+- Reserve ammo is bag ammo: a weapon with `WeaponDef.ammo_item` draws its
+  reserve from `WeaponHolder.ammo_source` (= `RunState.inventory`, set before
+  `set_loadout`). Ammo is taken when a reload *finishes*, so bag changes
+  mid-reload are safe. The HUD reserve is `count_of(ammo_item)`, refreshed on
+  every bag change (except mid-reload). Weapons without an ammo_item keep
+  their own `reserve` (old path). Starting reserve (Ammo Pouch applied) comes
+  from `starting_ammo()`, which `run._stock_starting_ammo()` puts in the bag;
+  overflow is lost until Phase 17 drops it on the ground.
+- Manual reload: `WeaponHolder.reload()` (HUD RELOAD button).
 - Projectiles move on the ground plane (zombie feet) and are drawn 6 px higher.
 
 ## Money
@@ -90,9 +99,13 @@ Supplies (25) check crate pickups.
   `min_spacing`), fall in over `DROP_TIME` and can only be picked up once landed;
   they blink near the end of the break. The `Indicators` child (z 50) draws
   edge arrows for off-screen crates.
-- `SupplyManager.collected(kind)` → `run.gd` applies `WaveTable.supply_heal_fraction`
-  (`HealthComponent.heal`) or `supply_ammo_fraction` (`WeaponHolder.add_ammo`) and
-  shows a HUD toast.
+- Touching a landed crate calls `SupplyManager.accept` (`run._accept_supply`).
+  Health crates put `WaveTable.supply_medkits` × `supply_medkit` in the bag;
+  ammo crates put `WeaponHolder.ammo_refill(supply_ammo_fraction)` ammo items
+  in it (plus `add_ammo()` for own-reserve weapons). If nothing fits, accept
+  returns false: the crate stays and "BAG FULL" shows (throttled to 1/s). A
+  partly fitting ammo crate is used up. `collected` fires only for crates
+  actually taken.
 
 ## Shop + settings
 - `ShopCatalog` (`data/shop_catalog.tres`) lists `UpgradeDef`s (levelled, cost
@@ -123,6 +136,18 @@ Supplies (25) check crate pickups.
   fit, so callers keep the rest (pickups stay on the ground). `take()` drains
   the smallest stacks first. `to_entries()` / `add_entries()` convert to plain
   `{id, count}` data for saving.
+- The run's bag is `RunState.inventory` (8 slots; shop upgrade later). It
+  and the run-only boosts (`damage_bonus`, `max_hp_bonus`) die with the run;
+  `_on_player_died` empties it.
+- Bag UI: `Hud.bag_pressed` (or `open_inventory`) → `run.open_bag()` pauses
+  the tree and opens `InventoryPanel` (process mode ALWAYS). The panel only
+  emits `use_requested` / `drop_requested` / `closed`; `run.use_item(slot)`
+  applies the effect via `_apply_item()` and consumes one unit only if it did
+  something (medkit at full HP is refused). Feedback goes to the panel while
+  it's open (HUD tweens are paused), otherwise to the HUD toast.
+- Quick buttons (HUD): MED → `run._quick_use(MEDKIT)` (smallest stack
+  first), RELOAD → `WeaponHolder.reload()`, GREN shows the count (Phase 18).
+  Counts refresh on `Inventory.changed`.
 - Decided rules (Phases 15–20): reserve ammo lives in the bag; boosts last the
   run only; shop items go to a permanent stash and only what's brought into a
   run is lost on death; opening the bag pauses; pickups last 30 s.
@@ -164,4 +189,5 @@ godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
 ```

@@ -6,9 +6,10 @@
 script = ExtResource("1_item")
 id = &"smg_ammo"
 display_name = "SMG Ammo"
+short_name = "SMG"
 color = Color(1, 0.82, 0.25, 1)
 kind = 0
-stack_limit = 60
+stack_limit = 120
 value = 0.0
 shop_price = 25
 shop_bundle = 60
