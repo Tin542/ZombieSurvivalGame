@@ -26,7 +26,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
 | `scenes/projectiles/` | `ProjectileManager` |
-| `scenes/pickups/` | `CoinManager`, `SupplyManager` |
+| `scenes/pickups/` | `CoinManager`, `SupplyManager`, `PickupManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
 | `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions, quick buttons), `InventoryPanel` + `InventorySlotButton`, game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
@@ -46,7 +46,7 @@ and call `resolve(uid, hint)`; re-acquire when it returns -1 (see `AutoAim`).
 ## Physics tick order
 `process_physics_priority`: WaveDirector (-30) advances the wave loop → Spawner
 (-20) adds zombies → Zombies (-10) compact, move, rebuild the grid →
-Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected →
+Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected → Pickups (22) offer items to the bag →
 Supplies (25) check crate pickups.
 
 ## Spawning
@@ -73,7 +73,7 @@ Supplies (25) check crate pickups.
   every bag change (except mid-reload). Weapons without an ammo_item keep
   their own `reserve` (old path). Starting reserve (Ammo Pouch applied) comes
   from `starting_ammo()`, which `run._stock_starting_ammo()` puts in the bag;
-  overflow is lost until Phase 17 drops it on the ground.
+  overflow is dropped at the player's feet as a pickup.
 - Manual reload: `WeaponHolder.reload()` (HUD RELOAD button).
 - Projectiles move on the ground plane (zombie feet) and are drawn 6 px higher.
 
@@ -152,6 +152,22 @@ Supplies (25) check crate pickups.
   run only; shop items go to a permanent stash and only what's brought into a
   run is lost on death; opening the bag pauses; pickups last 30 s.
 
+## Loot + pickups
+- `ZombieDef.loot` is a list of `LootEntry` (item, chance, min/max count); each
+  entry is rolled on its own per kill (`LootEntry.roll`). `run._drop_loot` skips
+  AMMO items no loadout weapon uses (`_wants_loot`).
+- `PickupManager` holds item pickups on the ground (plain objects, one `_draw`,
+  ground layer). Loot pops out over `POP_TIME` and can't be taken mid-air;
+  pickups expire after `lifetime` (30 s) and blink for the last 5 s. When
+  `max_pickups` is reached the oldest makes room.
+- Walking over a pickup calls `accept(def, count) -> int` (`run._accept_pickup`
+  → `Inventory.add`): the bag takes what fits, the rest stays; 0 → "BAG FULL".
+  `collected` drives the HUD toast.
+- Bag DROP and starting-ammo overflow spawn pickups at the player's feet with
+  `hold = true`: they only become collectable after the player has been
+  `rearm_distance` away, so they aren't picked straight back up.
+- Death sets `target = null`: nothing is collected after banking.
+
 ## Save system
 - `SaveData` (JSON) is versioned: `VERSION` is what this build writes;
   `from_dict()` runs `migrate()` first, which upgrades older dictionaries one
@@ -188,6 +204,7 @@ godot --headless --path . --fixed-fps 60 -s res://tests/coin_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/loot_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
 ```

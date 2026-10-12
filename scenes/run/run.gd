@@ -6,8 +6,8 @@ extends Node2D
 ## advances the wave loop, Spawner (-20) adds zombies, Zombies (-10) move and
 ## rebuild the grid, then Player and its components (0) aim and fire, then
 ## Projectiles (10) resolve hits against fresh positions, then Coins (20)
-## home in on the player and get collected, then Supplies (25) check crate
-## pickups.
+## home in on the player and get collected, then Pickups (22) offer items to
+## the bag, then Supplies (25) check crate pickups.
 
 ## Debug overlay bursts use at least this wave, so every zombie type shows up.
 const DEBUG_BURST_MIN_WAVE := 10
@@ -37,6 +37,7 @@ var _banked_coins := 0
 var _best_wave_before_run := 0
 ## Weapon damage multiplier from permanent upgrades; run boosts add on top.
 var _base_damage_multiplier := 1.0
+var _loot_rng := RandomNumberGenerator.new()
 
 @onready var _arena: Arena = $Arena
 @onready var _zombies: ZombieManager = $World/Zombies
@@ -46,6 +47,7 @@ var _base_damage_multiplier := 1.0
 @onready var _projectiles: ProjectileManager = $Projectiles
 @onready var _coins: CoinManager = $Coins
 @onready var _supplies: SupplyManager = $Supplies
+@onready var _pickups: PickupManager = $Pickups
 @onready var _hud: Hud = $HUD
 @onready var _game_over: GameOverScreen = $GameOver
 
@@ -90,6 +92,11 @@ func _ready() -> void:
 	_supplies.setup(bounds)
 	_supplies.target = _player
 	_supplies.accept = _accept_supply
+
+	_pickups.setup(bounds)
+	_pickups.target = _player
+	_pickups.accept = _accept_pickup
+	_pickups.collected.connect(_on_pickup_collected)
 
 	var weapons := _player.weapons
 	_player.aim.zombies = _zombies
@@ -171,14 +178,15 @@ func use_item(slot: int) -> bool:
 	return true
 
 
-## Throws away the whole stack in `slot`. Returns the units removed.
-## Phase 17 turns dropped items into pickups on the ground.
+## Drops the whole stack in `slot` on the ground at the player's feet. It can be
+## picked up again once the player has stepped away. Returns the units dropped.
 func drop_item(slot: int) -> int:
 	var inventory := state.inventory
 	if slot < 0 or slot >= inventory.capacity or inventory.is_empty_slot(slot):
 		return 0
 	var def := inventory.get_def(slot)
 	var dropped := inventory.remove_at(slot, inventory.get_count(slot))
+	_pickups.spawn(_player.global_position, def, dropped, true)
 	_notify("DROPPED %s" % def.display_name.to_upper())
 	return dropped
 
@@ -266,7 +274,7 @@ func _wire_debug_overlay() -> void:
 	overlay.items_requested.connect(_debug_give_items)
 
 
-## Debug: one of every item (a full stack of ammo), until loot exists.
+## Debug: one of every item (a full stack of ammo).
 func _debug_give_items() -> void:
 	for item in catalog.items:
 		state.inventory.add(item, item.stack_limit if item.kind == ItemDef.Kind.AMMO else 1)
@@ -324,12 +332,13 @@ func _plan_crates(count: int) -> Array[SupplyManager.Kind]:
 	return kinds
 
 
-## Reserve ammo for the loadout goes into the bag. What doesn't fit is lost
-## for now; Phase 17 drops it on the ground next to the player.
+## Reserve ammo for the loadout goes into the bag. What doesn't fit is put on
+## the ground at the player's feet.
 func _stock_starting_ammo() -> void:
 	var kit := _player.weapons.starting_ammo()
 	for item in kit:
-		state.inventory.add(item, kit[item])
+		var overflow: int = kit[item] - state.inventory.add(item, kit[item])
+		_pickups.spawn(_player.global_position, item, overflow, true)
 
 
 ## SupplyManager asks this when the player touches a landed crate. Crates put
@@ -370,13 +379,51 @@ func _notify_bag_full() -> void:
 ## `position` is in ZombieManager space, which matches world space (both at the origin).
 func _on_zombie_killed(position: Vector2, def: ZombieDef) -> void:
 	state.kills += 1
-	_coins.spawn(_zombies.to_global(position), def.coin_value)
+	var at := _zombies.to_global(position)
+	_coins.spawn(at, def.coin_value)
+	_drop_loot(at, def)
+
+
+## Rolls every loot entry of `def` on its own. Ammo for weapons the player
+## doesn't carry is skipped, so loot never fills the bag with useless rounds.
+func _drop_loot(world_position: Vector2, def: ZombieDef) -> void:
+	for entry in def.loot:
+		if not _wants_loot(entry.item):
+			continue
+		var count := entry.roll(_loot_rng)
+		if count > 0:
+			_pickups.spawn(world_position, entry.item, count)
+
+
+func _wants_loot(item: ItemDef) -> bool:
+	if item == null:
+		return false
+	if item.kind != ItemDef.Kind.AMMO:
+		return true
+	for weapon in _player.weapons.loadout():
+		if weapon.ammo_item == item and not weapon.infinite_ammo:
+			return true
+	return false
+
+
+## PickupManager asks this when the player walks over a pickup: the bag takes
+## what fits and the rest stays on the ground.
+func _accept_pickup(def: ItemDef, count: int) -> int:
+	var added := state.inventory.add(def, count)
+	if added == 0:
+		_notify_bag_full()
+	return added
+
+
+func _on_pickup_collected(def: ItemDef, count: int, _position: Vector2) -> void:
+	_hud.show_toast("+%d %s" % [count, def.display_name.to_upper()] if count > 1 else "+%s" % def.display_name.to_upper())
 
 
 func _on_player_died() -> void:
 	# Coins still on the ground are lost; none can be collected after banking.
 	_coins.target = null
 	_supplies.target = null
+	_pickups.target = null
 	# Everything in the bag belonged to this run.
 	_hud.bag_panel.close()
 	state.inventory.clear()
