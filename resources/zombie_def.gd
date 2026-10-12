@@ -15,6 +15,9 @@ extends Resource
 
 @export_group("Rewards")
 @export var coin_value: int = 1
+## Item drops, each rolled independently on a kill. The run skips ammo for
+## weapons the player doesn't carry.
+@export var loot: Array[LootEntry] = []
 
 @export_group("Visuals")
 ## Drawn with its bottom edge at the zombie's feet.

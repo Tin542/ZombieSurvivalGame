@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scenes/pickups/coin_manager.gd" id="17_coins"]
 [ext_resource type="Script" path="res://scenes/pickups/supply_manager.gd" id="18_supplies"]
 [ext_resource type="Resource" path="res://data/shop_catalog.tres" id="19_catalog"]
+[ext_resource type="Script" path="res://scenes/pickups/pickup_manager.gd" id="20_pickups"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
@@ -34,6 +35,10 @@ script = ExtResource("2_arena")
 [node name="Coins" type="Node2D" parent="."]
 process_physics_priority = 20
 script = ExtResource("17_coins")
+
+[node name="Pickups" type="Node2D" parent="."]
+process_physics_priority = 22
+script = ExtResource("20_pickups")
 
 [node name="Supplies" type="Node2D" parent="."]
 process_physics_priority = 25

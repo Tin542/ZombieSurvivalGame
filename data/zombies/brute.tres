@@ -1,6 +1,13 @@
 [gd_resource type="Resource" script_class="ZombieDef" format=3]
 
 [ext_resource type="Script" path="res://resources/zombie_def.gd" id="1_zdef"]
+[ext_resource type="Script" path="res://resources/loot_entry.gd" id="2_loot"]
+[ext_resource type="Resource" path="res://data/items/medkit.tres" id="item_medkit"]
+[ext_resource type="Resource" path="res://data/items/smg_ammo.tres" id="item_smg_ammo"]
+[ext_resource type="Resource" path="res://data/items/shotgun_ammo.tres" id="item_shotgun_ammo"]
+[ext_resource type="Resource" path="res://data/items/grenade.tres" id="item_grenade"]
+[ext_resource type="Resource" path="res://data/items/damage_boost.tres" id="item_damage_boost"]
+[ext_resource type="Resource" path="res://data/items/max_hp_boost.tres" id="item_max_hp_boost"]
 
 [sub_resource type="Gradient" id="Gradient_brute"]
 offsets = PackedFloat32Array(0, 1)
@@ -12,6 +19,48 @@ width = 16
 height = 20
 fill_to = Vector2(0, 1)
 
+[sub_resource type="Resource" id="Loot_1"]
+script = ExtResource("2_loot")
+item = ExtResource("item_medkit")
+chance = 0.25
+min_count = 1
+max_count = 1
+
+[sub_resource type="Resource" id="Loot_2"]
+script = ExtResource("2_loot")
+item = ExtResource("item_smg_ammo")
+chance = 0.35
+min_count = 20
+max_count = 40
+
+[sub_resource type="Resource" id="Loot_3"]
+script = ExtResource("2_loot")
+item = ExtResource("item_shotgun_ammo")
+chance = 0.35
+min_count = 4
+max_count = 8
+
+[sub_resource type="Resource" id="Loot_4"]
+script = ExtResource("2_loot")
+item = ExtResource("item_grenade")
+chance = 0.15
+min_count = 1
+max_count = 1
+
+[sub_resource type="Resource" id="Loot_5"]
+script = ExtResource("2_loot")
+item = ExtResource("item_damage_boost")
+chance = 0.05
+min_count = 1
+max_count = 1
+
+[sub_resource type="Resource" id="Loot_6"]
+script = ExtResource("2_loot")
+item = ExtResource("item_max_hp_boost")
+chance = 0.05
+min_count = 1
+max_count = 1
+
 [resource]
 script = ExtResource("1_zdef")
 id = &"brute"
@@ -21,4 +70,5 @@ contact_damage = 15.0
 attack_interval = 1.2
 radius = 8.0
 coin_value = 5
+loot = Array[ExtResource("2_loot")]([SubResource("Loot_1"), SubResource("Loot_2"), SubResource("Loot_3"), SubResource("Loot_4"), SubResource("Loot_5"), SubResource("Loot_6")])
 texture = SubResource("GradientTexture2D_brute")

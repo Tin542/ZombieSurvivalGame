@@ -1,6 +1,10 @@
 [gd_resource type="Resource" script_class="ZombieDef" format=3]
 
 [ext_resource type="Script" path="res://resources/zombie_def.gd" id="1_zdef"]
+[ext_resource type="Script" path="res://resources/loot_entry.gd" id="2_loot"]
+[ext_resource type="Resource" path="res://data/items/smg_ammo.tres" id="item_smg_ammo"]
+[ext_resource type="Resource" path="res://data/items/shotgun_ammo.tres" id="item_shotgun_ammo"]
+[ext_resource type="Resource" path="res://data/items/medkit.tres" id="item_medkit"]
 
 [sub_resource type="Gradient" id="Gradient_walker"]
 offsets = PackedFloat32Array(0, 1)
@@ -12,6 +16,27 @@ width = 10
 height = 14
 fill_to = Vector2(0, 1)
 
+[sub_resource type="Resource" id="Loot_1"]
+script = ExtResource("2_loot")
+item = ExtResource("item_smg_ammo")
+chance = 0.06
+min_count = 8
+max_count = 15
+
+[sub_resource type="Resource" id="Loot_2"]
+script = ExtResource("2_loot")
+item = ExtResource("item_shotgun_ammo")
+chance = 0.05
+min_count = 2
+max_count = 4
+
+[sub_resource type="Resource" id="Loot_3"]
+script = ExtResource("2_loot")
+item = ExtResource("item_medkit")
+chance = 0.015
+min_count = 1
+max_count = 1
+
 [resource]
 script = ExtResource("1_zdef")
 id = &"walker"
@@ -21,4 +46,5 @@ contact_damage = 5.0
 attack_interval = 0.8
 radius = 5.0
 coin_value = 1
+loot = Array[ExtResource("2_loot")]([SubResource("Loot_1"), SubResource("Loot_2"), SubResource("Loot_3")])
 texture = SubResource("GradientTexture2D_walker")

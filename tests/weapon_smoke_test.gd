@@ -22,6 +22,7 @@ func _initialize() -> void:
 	player.health.set_max_hp(1e9)
 	run.get_node("WaveDirector").stop()
 	zombies.clear()
+	run.get_node("Pickups").target = null  # loot is covered by loot_test; keep ammo counts exact
 
 	var shots := [0]
 	weapons.fired.connect(func(_dir: Vector2) -> void: shots[0] += 1)
