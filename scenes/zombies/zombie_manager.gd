@@ -103,6 +103,34 @@ func damage(index: int, amount: float, knockback: Vector2 = Vector2.ZERO) -> boo
 	return true
 
 
+## Damages every living zombie whose body is within `radius` of
+## `world_center`. Damage falls off linearly from `amount` at the centre to
+## half at the edge; zombies are pushed outward by up to `knockback` pixels.
+## Returns the number killed.
+func blast(world_center: Vector2, radius: float, amount: float, knockback: float = 0.0) -> int:
+	if _grid == null or radius <= 0.0:
+		return 0
+	var center := to_local(world_center)
+	var n := _grid.query_radius(center, radius + _max_radius)
+	# Copy: kills emit zombie_killed, and a listener may query the grid.
+	var hits := _grid.results.slice(0, n)
+	var kills := 0
+	for i in hits:
+		if _hp[i] <= 0.0:
+			continue
+		var offset := _pos[i] - center
+		var edge := maxf(offset.length() - _radius[i], 0.0)
+		if edge > radius:
+			continue
+		var falloff := edge / radius
+		var push := Vector2.ZERO
+		if offset != Vector2.ZERO:
+			push = offset.normalized() * knockback * (1.0 - falloff)
+		if damage(i, amount * lerpf(1.0, 0.5, falloff), push):
+			kills += 1
+	return kills
+
+
 ## Index of the closest living zombie within `max_distance`, or -1.
 func find_nearest(from: Vector2, max_distance: float) -> int:
 	if _grid == null:

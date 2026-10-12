@@ -25,10 +25,10 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `scenes/player/` | Player body + `components/` |
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
-| `scenes/projectiles/` | `ProjectileManager` |
+| `scenes/projectiles/` | `ProjectileManager`, `GrenadeManager` |
 | `scenes/pickups/` | `CoinManager`, `SupplyManager`, `PickupManager` |
 | `scenes/world/` | `Arena` (fixed bounded map) |
-| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions, quick buttons), `InventoryPanel` + `InventorySlotButton`, game-over screen, debug overlay |
+| `scenes/ui/` | HUD (native `VirtualJoystick` → `move_*` actions, quick buttons, `AimButton`), `InventoryPanel` + `InventorySlotButton`, game-over screen, debug overlay |
 | `tests/` | Headless scripts, e.g. `zombie_stress_test.gd` |
 
 ## Game rules decided
@@ -46,7 +46,7 @@ and call `resolve(uid, hint)`; re-acquire when it returns -1 (see `AutoAim`).
 ## Physics tick order
 `process_physics_priority`: WaveDirector (-30) advances the wave loop → Spawner
 (-20) adds zombies → Zombies (-10) compact, move, rebuild the grid →
-Player + components (0) aim and fire → Projectiles (10) resolve hits → Coins (20) home in and get collected → Pickups (22) offer items to the bag →
+Player + components (0) aim and fire → Projectiles (10) resolve hits → Grenades (12) fly and explode → Coins (20) home in and get collected → Pickups (22) offer items to the bag →
 Supplies (25) check crate pickups.
 
 ## Spawning
@@ -146,7 +146,7 @@ Supplies (25) check crate pickups.
   something (medkit at full HP is refused). Feedback goes to the panel while
   it's open (HUD tweens are paused), otherwise to the HUD toast.
 - Quick buttons (HUD): MED → `run._quick_use(MEDKIT)` (smallest stack
-  first), RELOAD → `WeaponHolder.reload()`, GREN shows the count (Phase 18).
+  first), RELOAD → `WeaponHolder.reload()`, GREN shows the count and is the grenade aim stick (see Grenades).
   Counts refresh on `Inventory.changed`.
 - Decided rules (Phases 15–20): reserve ammo lives in the bag; boosts last the
   run only; shop items go to a permanent stash and only what's brought into a
@@ -167,6 +167,29 @@ Supplies (25) check crate pickups.
   `hold = true`: they only become collectable after the player has been
   `rearm_distance` away, so they aren't picked straight back up.
 - Death sets `target = null`: nothing is collected after banking.
+
+## Grenades
+- The HUD's GREN button is an `AimButton`: press + drag aims (vector up to
+  length 1 = `max_drag` px), release throws, dragging out and back inside
+  `dead_zone` cancels, a tap (never dragged out) reports `tapped`. It tracks
+  one touch index, so it works while another finger holds the joystick;
+  emulated mouse events are ignored, real mouse works on desktop.
+- `Hud` forwards `grenade_aim_*` / `grenade_tapped`; the run turns the aim
+  into a landing point (`aim × ItemDef.throw_range` from the player) and shows
+  it with `GrenadeManager.show_aim()` (blast circle + range ring).
+- `run.throw_grenade(target)` takes one grenade (smallest stack), clamps the
+  target to `throw_range` and calls `GrenadeManager.throw()` with
+  `damage × WeaponHolder.damage_multiplier` (Firepower + Rage).
+  `throw_grenade_at_nearest()` (tap, `throw_grenade` action = G) aims at the
+  nearest zombie in range, or shows "NO TARGET" and uses nothing.
+- `GrenadeManager` (packed arrays, one `_draw`, priority 12) arcs each
+  grenade to its landing point over `ItemDef.fuse`, then calls
+  `ZombieManager.blast(center, radius, damage, knockback)`: a grid query;
+  damage falls off from full at the centre to half at the edge (distance to
+  the zombie's body). The player is never damaged. Kills go through the usual
+  `zombie_killed` path (coins, loot, kill count).
+- Opening the bag and death cancel the aim; death also clears grenades still
+  in the air so nothing scores after banking.
 
 ## Save system
 - `SaveData` (JSON) is versioned: `VERSION` is what this build writes;
@@ -205,6 +228,7 @@ godot --headless --path . --fixed-fps 60 -s res://tests/supply_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/loot_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/grenade_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
 ```
