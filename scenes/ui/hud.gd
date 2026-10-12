@@ -9,7 +9,12 @@ signal skip_break_pressed
 signal bag_pressed
 signal medkit_pressed
 signal reload_pressed
-signal grenade_pressed
+## Grenade button used as an aim stick; see AimButton.
+signal grenade_aim_started
+signal grenade_aim_changed(aim: Vector2)
+signal grenade_aim_released(aim: Vector2)
+signal grenade_aim_cancelled
+signal grenade_tapped
 
 const BANNER_HOLD := 1.4
 const BANNER_FADE := 0.4
@@ -45,7 +50,7 @@ var _fps_timer := 0.0
 @onready var _skip_button: Button = %SkipButton
 @onready var _damage_flash: ColorRect = %DamageFlash
 @onready var _medkit_button: Button = %MedkitButton
-@onready var _grenade_button: Button = %GrenadeButton
+@onready var _grenade_button: AimButton = %GrenadeButton
 ## The bag view. The run opens it (and pauses) and handles its signals.
 @onready var bag_panel: InventoryPanel = %InventoryPanel
 
@@ -56,7 +61,11 @@ func _ready() -> void:
 	%BagButton.pressed.connect(bag_pressed.emit)
 	%ReloadButton.pressed.connect(reload_pressed.emit)
 	_medkit_button.pressed.connect(medkit_pressed.emit)
-	_grenade_button.pressed.connect(grenade_pressed.emit)
+	_grenade_button.aim_started.connect(grenade_aim_started.emit)
+	_grenade_button.aim_changed.connect(grenade_aim_changed.emit)
+	_grenade_button.aim_released.connect(grenade_aim_released.emit)
+	_grenade_button.aim_cancelled.connect(grenade_aim_cancelled.emit)
+	_grenade_button.tapped.connect(grenade_tapped.emit)
 	set_quick_counts(0, 0)
 	_damage_flash.modulate.a = 0.0
 	_banner.hide()
@@ -106,6 +115,13 @@ func set_quick_counts(medkits: int, grenades: int) -> void:
 	_medkit_button.disabled = medkits == 0
 	_grenade_button.text = "GREN %d" % grenades
 	_grenade_button.disabled = grenades == 0
+	if grenades == 0:
+		_grenade_button.cancel_aim()
+
+
+## Stops a grenade aim in progress without throwing.
+func cancel_grenade_aim() -> void:
+	_grenade_button.cancel_aim()
 
 
 func set_switch_visible(show: bool) -> void:

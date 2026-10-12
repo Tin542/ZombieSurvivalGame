@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scenes/pickups/supply_manager.gd" id="18_supplies"]
 [ext_resource type="Resource" path="res://data/shop_catalog.tres" id="19_catalog"]
 [ext_resource type="Script" path="res://scenes/pickups/pickup_manager.gd" id="20_pickups"]
+[ext_resource type="Script" path="res://scenes/projectiles/grenade_manager.gd" id="21_grenades"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
@@ -60,6 +61,10 @@ script = ExtResource("3_zombies")
 [node name="Projectiles" type="Node2D" parent="."]
 process_physics_priority = 10
 script = ExtResource("11_projectiles")
+
+[node name="Grenades" type="Node2D" parent="."]
+process_physics_priority = 12
+script = ExtResource("21_grenades")
 
 [node name="HUD" parent="." instance=ExtResource("5_hud")]
 

@@ -5,7 +5,8 @@ extends Node2D
 ## Physics order within a tick (process_physics_priority): WaveDirector (-30)
 ## advances the wave loop, Spawner (-20) adds zombies, Zombies (-10) move and
 ## rebuild the grid, then Player and its components (0) aim and fire, then
-## Projectiles (10) resolve hits against fresh positions, then Coins (20)
+## Projectiles (10) resolve hits against fresh positions, then Grenades (12)
+## fly and explode through the zombie grid, then Coins (20)
 ## home in on the player and get collected, then Pickups (22) offer items to
 ## the bag, then Supplies (25) check crate pickups.
 
@@ -45,6 +46,7 @@ var _loot_rng := RandomNumberGenerator.new()
 @onready var _spawner: ZombieSpawner = $Spawner
 @onready var _player: Player = $World/Player
 @onready var _projectiles: ProjectileManager = $Projectiles
+@onready var _grenades: GrenadeManager = $Grenades
 @onready var _coins: CoinManager = $Coins
 @onready var _supplies: SupplyManager = $Supplies
 @onready var _pickups: PickupManager = $Pickups
@@ -82,6 +84,14 @@ func _ready() -> void:
 
 	_projectiles.setup(bounds)
 	_projectiles.zombies = _zombies
+
+	_grenades.setup(bounds)
+	_grenades.zombies = _zombies
+	_hud.grenade_aim_started.connect(_on_grenade_aim.bind(Vector2.ZERO))
+	_hud.grenade_aim_changed.connect(_on_grenade_aim)
+	_hud.grenade_aim_released.connect(_on_grenade_aim_released)
+	_hud.grenade_aim_cancelled.connect(_grenades.hide_aim)
+	_hud.grenade_tapped.connect(throw_grenade_at_nearest)
 
 	_coins.setup(bounds)
 	_coins.target = _player
@@ -156,6 +166,7 @@ func _apply_upgrades() -> void:
 func open_bag() -> void:
 	if _player.health.is_dead() or _hud.bag_panel.visible:
 		return
+	_hud.cancel_grenade_aim()
 	get_tree().paused = true
 	_hud.bag_panel.open(state.inventory)
 
@@ -189,6 +200,63 @@ func drop_item(slot: int) -> int:
 	_pickups.spawn(_player.global_position, def, dropped, true)
 	_notify("DROPPED %s" % def.display_name.to_upper())
 	return dropped
+
+
+## Throws one grenade from the bag (smallest stack first) towards
+## `world_target`, pulled in to the grenade's throw range. Its blast damage
+## gets the same multiplier as the weapons (Firepower + Rage Pill). False if
+## there is no grenade, the player is dead or too many are in the air.
+func throw_grenade(world_target: Vector2) -> bool:
+	var slot := _grenade_slot()
+	if slot == -1 or _player.health.is_dead():
+		return false
+	var def := state.inventory.get_def(slot)
+	var from := _player.global_position
+	var to := from + (world_target - from).limit_length(def.throw_range)
+	var damage := def.damage * _player.weapons.damage_multiplier
+	if not _grenades.throw(from, to, def.fuse, damage, def.radius):
+		return false
+	state.inventory.remove_at(slot, 1)
+	return true
+
+
+## Tap on the grenade button / throw_grenade key: throws at the nearest zombie
+## within range. "NO TARGET" (nothing used) if there is none.
+func throw_grenade_at_nearest() -> bool:
+	var slot := _grenade_slot()
+	if slot == -1 or _player.health.is_dead():
+		return false
+	var def := state.inventory.get_def(slot)
+	var nearest := _zombies.find_nearest(_zombies.to_local(_player.global_position), def.throw_range)
+	if nearest == -1:
+		_notify("NO TARGET")
+		return false
+	return throw_grenade(_zombies.to_global(_zombies.get_zombie_position(nearest)))
+
+
+func _grenade_slot() -> int:
+	return state.inventory.smallest_slot_where(func(def: ItemDef) -> bool: return def.kind == ItemDef.Kind.GRENADE)
+
+
+## Where a grenade aimed with `aim` (length 0..1 of the throw range) lands.
+func _grenade_target(aim: Vector2, def: ItemDef) -> Vector2:
+	return _player.global_position + aim.limit_length(1.0) * def.throw_range
+
+
+func _on_grenade_aim(aim: Vector2) -> void:
+	var slot := _grenade_slot()
+	if slot == -1 or _player.health.is_dead():
+		_grenades.hide_aim()
+		return
+	var def := state.inventory.get_def(slot)
+	_grenades.show_aim(_player.global_position, _grenade_target(aim, def), def.radius, def.throw_range)
+
+
+func _on_grenade_aim_released(aim: Vector2) -> void:
+	_grenades.hide_aim()
+	var slot := _grenade_slot()
+	if slot != -1:
+		throw_grenade(_grenade_target(aim, state.inventory.get_def(slot)))
 
 
 ## Applies one unit of `def`. Returns the feedback text, or "" if it had no
@@ -249,6 +317,9 @@ func _notify(text: String) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"open_inventory"):
 		open_bag()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"throw_grenade"):
+		throw_grenade_at_nearest()
 		get_viewport().set_input_as_handled()
 
 
@@ -424,6 +495,9 @@ func _on_player_died() -> void:
 	_coins.target = null
 	_supplies.target = null
 	_pickups.target = null
+	# Grenades in the air are lost too; nothing scores after banking.
+	_hud.cancel_grenade_aim()
+	_grenades.clear()
 	# Everything in the bag belonged to this run.
 	_hud.bag_panel.close()
 	state.inventory.clear()

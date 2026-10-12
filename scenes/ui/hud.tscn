@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/inventory_panel.tscn" id="2_bag"]
+[ext_resource type="Script" path="res://scenes/ui/aim_button.gd" id="9_aim"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
 bg_color = Color(0.1, 0.06, 0.06, 0.8)
@@ -257,6 +258,7 @@ layout_mode = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 9
 text = "GREN 0"
+script = ExtResource("9_aim")
 
 [node name="MedkitButton" type="Button" parent="QuickPanel"]
 unique_name_in_owner = true
