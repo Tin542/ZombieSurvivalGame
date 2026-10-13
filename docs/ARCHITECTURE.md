@@ -21,7 +21,7 @@ Godot 4.7, GL Compatibility, Android landscape. Base viewport 640×360,
 | `data/` | Balance `.tres` (zombies, weapons, waves, upgrades, items) |
 | `systems/` | Engine-agnostic helpers: `SpatialGrid`, `SaveData`, `Inventory` |
 | `scenes/run/` | Gameplay root, `RunState` |
-| `scenes/main_menu/` | Main menu, `ShopPanel` + `ShopRow`, `SettingsPanel` |
+| `scenes/main_menu/` | Main menu, `ShopPanel` + `ShopRow`, `PreparePanel`, `SettingsPanel` |
 | `scenes/player/` | Player body + `components/` |
 | `scenes/zombies/` | `ZombieManager`, `ZombieSpawner` |
 | `scenes/waves/` | `WaveDirector` |
@@ -110,14 +110,34 @@ Supplies (25) check crate pickups.
 ## Shop + settings
 - `ShopCatalog` (`data/shop_catalog.tres`) lists `UpgradeDef`s (levelled, cost
   grows by `cost_growth`) and every `WeaponDef` (unlock_cost 0 = owned from the
-  start). The run uses it for its weapon list too.
-- Purchases are single `SaveService` calls (`purchase_upgrade`, `purchase_weapon`)
-  that spend and grant in one save. `ShopPanel` only checks max level, shows
-  prices and refreshes on `coins_changed` / `upgrades_changed`.
+  start). The run uses it for its weapon list too. Items with a `shop_price`
+  are sold too (one `shop_bundle` per purchase).
+- Purchases are single `SaveService` calls (`purchase_upgrade`, `purchase_weapon`,
+  `purchase_item`) that spend and grant in one save. `ShopPanel` only checks max
+  level, shows prices and refreshes on `coins_changed` / `upgrades_changed` /
+  `stash_changed`.
 - `run._apply_upgrades()` turns owned levels into stats via
   `ShopCatalog.bonus(stat, SaveService.get_upgrade_level)`: max HP (flat),
-  damage / move speed / coin magnet / starting ammo (fractions). Runs before the
-  loadout is built.
+  damage / move speed / coin magnet / starting ammo (fractions), bag slots
+  (`ShopCatalog.bag_slots`, Backpack). Runs before the loadout is built.
+
+## Stash + loadout
+- Bought items go to `SaveData.stash` (item id → units, no slot limit). Only
+  the run's bag has slots.
+- PLAY: `SaveService.has_stash()` → `PreparePanel.open()`, else the run starts
+  directly. The panel restores `SaveData.last_loadout`, clamped to the stash
+  and to the bag (`ShopCatalog.bag_slots`; consumables before ammo, then
+  catalog order). +/− change one unit (ammo: one `shop_bundle`); + is
+  disabled when the stash is out or the stack would need a slot the bag
+  doesn't have. START emits `start_requested(loadout)` → `SceneRouter.start_run(loadout)`.
+- `SceneRouter` only carries the requested loadout across the scene change
+  (`take_run_loadout()`, handed over once). The run calls
+  `SaveService.take_loadout(wanted)` in `_ready`, after stocking starting ammo:
+  one save that removes what's available from the stash and stores the
+  request as `last_loadout`. Nothing leaves the stash if the run never starts.
+- Taken items go into the bag; what doesn't fit is a held pickup at the
+  player's feet. They are run items now: death empties the bag, the stash
+  keeps the rest. RETRY calls `start_run(last_loadout)`.
 - Settings live in `SaveData.settings` (JSON, type-checked against
   `DEFAULT_SETTINGS`). `SaveService` applies master volume itself; the run reads
   `vibration` (throttled hurt buzz) and `show_fps` (HUD label).
@@ -136,7 +156,7 @@ Supplies (25) check crate pickups.
   fit, so callers keep the rest (pickups stay on the ground). `take()` drains
   the smallest stacks first. `to_entries()` / `add_entries()` convert to plain
   `{id, count}` data for saving.
-- The run's bag is `RunState.inventory` (8 slots; shop upgrade later). It
+- The run's bag is `RunState.inventory` (8 slots + Backpack). It
   and the run-only boosts (`damage_bonus`, `max_hp_bonus`) die with the run;
   `_on_player_died` empties it.
 - Bag UI: `Hud.bag_pressed` (or `open_inventory`) → `run.open_bag()` pauses
@@ -194,7 +214,8 @@ Supplies (25) check crate pickups.
 ## Save system
 - `SaveData` (JSON) is versioned: `VERSION` is what this build writes;
   `from_dict()` runs `migrate()` first, which upgrades older dictionaries one
-  step at a time (`_migrate_v1_to_v2` added lifetime `stats`). To change the
+  step at a time (`_migrate_v1_to_v2` added lifetime `stats`,
+  `_migrate_v2_to_v3` the item `stash` and `last_loadout`). To change the
   format: bump `VERSION`, add a `_migrate_vN_to_vN+1`, register it in `migrate()`.
 - Files next to `save.json`: `.tmp` (write in progress), `.bak` (previous save,
   rotated on every write), `.session.bak` (save as it was at game start, before
@@ -229,6 +250,7 @@ godot --headless --path . --fixed-fps 60 -s res://tests/shop_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/save_system_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/loot_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/grenade_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/loadout_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
 ```

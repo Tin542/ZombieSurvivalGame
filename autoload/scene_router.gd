@@ -7,6 +7,8 @@ const FADE_TIME := 0.2
 
 var _fade: ColorRect
 var _busy := false
+## Items (id -> units) the next run should take from the stash.
+var _run_loadout: Dictionary = {}
 
 
 func _ready() -> void:
@@ -24,8 +26,21 @@ func go_to_main_menu() -> void:
 	_change_scene(MAIN_MENU)
 
 
-func start_run() -> void:
+## Starts a run that brings `loadout` (item id -> units) from the stash.
+## The run takes the items itself (SaveService.take_loadout) when it starts,
+## so a transition that never happens can't lose them.
+func start_run(loadout: Dictionary = {}) -> void:
+	if _busy:
+		return
+	_run_loadout = loadout.duplicate()
 	_change_scene(RUN)
+
+
+## The loadout passed to start_run(), handed over once; empty afterwards.
+func take_run_loadout() -> Dictionary:
+	var loadout := _run_loadout
+	_run_loadout = {}
+	return loadout
 
 
 func _change_scene(path: String) -> void:

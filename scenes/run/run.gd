@@ -64,7 +64,7 @@ func _ready() -> void:
 	_player.health.damaged.connect(_hud.flash_damage.unbind(1))
 	_player.health.died.connect(_on_player_died)
 	_player.health.damaged.connect(_vibrate_on_hurt.unbind(1))
-	_game_over.retry_pressed.connect(SceneRouter.start_run)
+	_game_over.retry_pressed.connect(_retry)
 	_game_over.menu_pressed.connect(SceneRouter.go_to_main_menu)
 
 	_zombies.setup(bounds)
@@ -132,6 +132,7 @@ func _ready() -> void:
 	weapons.ammo_source = state.inventory
 	weapons.set_loadout(_build_loadout())
 	_stock_starting_ammo()
+	_bring_loadout(SceneRouter.take_run_loadout())
 	_hud.set_switch_visible(weapons.weapon_count() > 1)
 
 	if OS.is_debug_build():
@@ -154,6 +155,7 @@ func _build_loadout() -> Array[WeaponDef]:
 func _apply_upgrades() -> void:
 	var level_of := SaveService.get_upgrade_level
 	var health := _player.health
+	state.inventory.set_capacity(catalog.bag_slots(RunState.BASE_BAG_SLOTS, level_of))
 	health.set_max_hp(health.max_hp + catalog.bonus(UpgradeDef.Stat.MAX_HP, level_of))
 	_base_damage_multiplier = 1.0 + catalog.bonus(UpgradeDef.Stat.DAMAGE, level_of)
 	_player.weapons.damage_multiplier = _base_damage_multiplier + state.damage_bonus
@@ -408,8 +410,32 @@ func _plan_crates(count: int) -> Array[SupplyManager.Kind]:
 func _stock_starting_ammo() -> void:
 	var kit := _player.weapons.starting_ammo()
 	for item in kit:
-		var overflow: int = kit[item] - state.inventory.add(item, kit[item])
-		_pickups.spawn(_player.global_position, item, overflow, true)
+		_add_or_drop(item, kit[item])
+
+
+## Takes the chosen items (id -> units) out of the stash and puts them in the
+## bag. They belong to this run now and are lost on death. Anything that
+## doesn't fit lands at the player's feet; unknown ids are skipped.
+func _bring_loadout(wanted: Dictionary) -> void:
+	if wanted.is_empty():
+		return
+	var taken := SaveService.take_loadout(wanted)
+	for id in taken:
+		var def := catalog.find_item(id)
+		if def != null:
+			_add_or_drop(def, taken[id])
+
+
+## Puts `count` units of `def` in the bag; the rest becomes a held pickup at
+## the player's feet.
+func _add_or_drop(def: ItemDef, count: int) -> void:
+	var overflow := count - state.inventory.add(def, count)
+	_pickups.spawn(_player.global_position, def, overflow, true)
+
+
+## RETRY brings the same loadout again, as far as the stash still allows.
+func _retry() -> void:
+	SceneRouter.start_run(SaveService.data.last_loadout)
 
 
 ## SupplyManager asks this when the player touches a landed crate. Crates put

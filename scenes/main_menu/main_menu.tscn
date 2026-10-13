@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://dylxequlxi0m2" path="res://scenes/main_menu/main_menu.gd" id="1_menu"]
 [ext_resource type="PackedScene" path="res://scenes/main_menu/shop_panel.tscn" id="2_shop"]
 [ext_resource type="PackedScene" path="res://scenes/main_menu/settings_panel.tscn" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/main_menu/prepare_panel.tscn" id="4_prepare"]
 
 [node name="MainMenu" type="Control" unique_id=112268947]
 layout_mode = 3
@@ -98,5 +99,9 @@ unique_name_in_owner = true
 layout_mode = 1
 
 [node name="SettingsPanel" parent="." unique_id=1831910285 instance=ExtResource("3_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="PreparePanel" parent="." instance=ExtResource("4_prepare")]
 unique_name_in_owner = true
 layout_mode = 1

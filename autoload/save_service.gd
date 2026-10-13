@@ -1,5 +1,6 @@
 extends Node
-## Owns persistent progress (coins, upgrades, unlocks, stats) and settings, and
+## Owns persistent progress (coins, upgrades, unlocks, item stash, stats) and
+## settings, and
 ## is the only code that touches the save file. Run-specific state never lives
 ## here. Also applies the one engine-global setting (master volume) so it holds
 ## from the first frame, whichever scene starts.
@@ -18,6 +19,8 @@ extends Node
 
 signal coins_changed(total: int)
 signal upgrades_changed
+## Items were bought or taken into a run.
+signal stash_changed
 signal setting_changed(key: String, value: Variant)
 ## Progress was wiped (settings kept).
 signal progress_reset
@@ -119,6 +122,59 @@ func purchase_weapon(id: StringName, cost: int) -> bool:
 	return true
 
 
+func get_stash_count(id: StringName) -> int:
+	return data.stash.get(id, 0)
+
+
+## True if the stash holds at least one item.
+func has_stash() -> bool:
+	for id in data.stash:
+		if data.stash[id] > 0:
+			return true
+	return false
+
+
+## Spends `cost` and adds `amount` units of item `id` to the stash, in a
+## single save. False if unaffordable.
+func purchase_item(id: StringName, amount: int, cost: int) -> bool:
+	if amount <= 0 or cost < 0 or data.coins < cost:
+		return false
+	data.coins -= cost
+	data.stash[id] = get_stash_count(id) + amount
+	save()
+	coins_changed.emit(data.coins)
+	stash_changed.emit()
+	return true
+
+
+## Moves the chosen items (id -> units) out of the stash for a run, each
+## clamped to what the stash holds, and remembers the choice as last_loadout.
+## One save. Returns what was actually taken; it belongs to the run from now
+## on (lost on death).
+func take_loadout(wanted: Dictionary) -> Dictionary[StringName, int]:
+	var taken: Dictionary[StringName, int] = {}
+	var remembered: Dictionary[StringName, int] = {}
+	for key in wanted:
+		var id := StringName(str(key))
+		var count := int(wanted[key])
+		if count <= 0:
+			continue
+		remembered[id] = count
+		var amount := mini(count, get_stash_count(id))
+		if amount <= 0:
+			continue
+		taken[id] = amount
+		if amount == get_stash_count(id):
+			data.stash.erase(id)
+		else:
+			data.stash[id] -= amount
+	data.last_loadout = remembered
+	save()
+	if not taken.is_empty():
+		stash_changed.emit()
+	return taken
+
+
 func get_setting(key: String) -> Variant:
 	return data.settings.get(key, SaveData.DEFAULT_SETTINGS.get(key))
 
@@ -160,7 +216,7 @@ func record_run(kills: int) -> void:
 	save()
 
 
-## Wipes coins, upgrades, unlocks, best wave and stats; keeps settings. The
+## Wipes coins, upgrades, unlocks, stash, best wave and stats; keeps settings. The
 ## session backup still holds the state from when the game started.
 func reset_progress() -> void:
 	var settings := data.settings.duplicate()
@@ -169,6 +225,7 @@ func reset_progress() -> void:
 	save()
 	coins_changed.emit(data.coins)
 	upgrades_changed.emit()
+	stash_changed.emit()
 	progress_reset.emit()
 
 

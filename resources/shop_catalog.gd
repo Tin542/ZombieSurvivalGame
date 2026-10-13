@@ -26,6 +26,11 @@ func bonus(stat: UpgradeDef.Stat, level_of: Callable) -> float:
 	return total
 
 
+## Bag slots in a run: the base size plus owned Backpack levels.
+func bag_slots(base: int, level_of: Callable) -> int:
+	return base + roundi(bonus(UpgradeDef.Stat.BAG_SLOTS, level_of))
+
+
 ## Item with `id`, or null if no such item exists (e.g. an old save entry).
 func find_item(id: StringName) -> ItemDef:
 	if _items_by_id.size() != items.size():

@@ -14,6 +14,8 @@ enum Stat {
 	MAGNET,
 	## Extra starting reserve ammo, fraction per level.
 	START_AMMO,
+	## Extra bag slots per level, flat.
+	BAG_SLOTS,
 }
 
 @export var id: StringName
@@ -44,4 +46,6 @@ func is_maxed(owned_level: int) -> bool:
 func value_text() -> String:
 	if stat == Stat.MAX_HP:
 		return "+%d HP" % roundi(value_per_level)
+	if stat == Stat.BAG_SLOTS:
+		return "+%d slots" % roundi(value_per_level)
 	return "+%d%%" % roundi(value_per_level * 100.0)
