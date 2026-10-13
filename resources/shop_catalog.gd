@@ -26,6 +26,33 @@ func bonus(stat: UpgradeDef.Stat, level_of: Callable) -> float:
 	return total
 
 
+## Bag slots in a run: the base size plus owned Backpack levels.
+func bag_slots(base: int, level_of: Callable) -> int:
+	return base + roundi(bonus(UpgradeDef.Stat.BAG_SLOTS, level_of))
+
+
+## Owned weapons in loadout order: starters (unlock_cost 0) plus those
+## `is_unlocked` (weapon id -> bool) reports.
+func owned_weapons(is_unlocked: Callable) -> Array[WeaponDef]:
+	var owned: Array[WeaponDef] = []
+	for weapon in weapons:
+		if weapon.unlock_cost == 0 or is_unlocked.call(weapon.id):
+			owned.append(weapon)
+	return owned
+
+
+## Ammo items a run with `owned` weapons stocks into the bag before the
+## loadout (Ammo Pouch applied), so PREPARE can count the slots it takes.
+## Mirrors WeaponHolder.starting_ammo() for weapons fed from the bag.
+func starting_ammo(owned: Array[WeaponDef], level_of: Callable) -> Dictionary[ItemDef, int]:
+	var multiplier := 1.0 + bonus(UpgradeDef.Stat.START_AMMO, level_of)
+	var kit: Dictionary[ItemDef, int] = {}
+	for weapon in owned:
+		if weapon.ammo_item != null and not weapon.infinite_ammo:
+			kit[weapon.ammo_item] = kit.get(weapon.ammo_item, 0) + weapon.starting_reserve(multiplier)
+	return kit
+
+
 ## Item with `id`, or null if no such item exists (e.g. an old save entry).
 func find_item(id: StringName) -> ItemDef:
 	if _items_by_id.size() != items.size():

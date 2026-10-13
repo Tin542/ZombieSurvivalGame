@@ -1,6 +1,8 @@
 class_name ShopPanel
 extends Control
-## Persistent shop: levelled upgrades and weapon unlocks from a ShopCatalog.
+## Persistent shop: levelled upgrades, weapon unlocks and items from a
+## ShopCatalog. Items go to the permanent stash; the PREPARE panel picks which
+## of them to bring into a run.
 ## Decides what is buyable and what it costs; each purchase is a single
 ## SaveService call, so coins and the bought item are saved together.
 
@@ -12,6 +14,7 @@ const ROW_SCENE := preload("res://scenes/main_menu/shop_row.tscn")
 
 var _upgrade_rows: Dictionary[UpgradeDef, ShopRow] = {}
 var _weapon_rows: Dictionary[WeaponDef, ShopRow] = {}
+var _item_rows: Dictionary[ItemDef, ShopRow] = {}
 
 @onready var _coins_label: Label = %ShopCoinsLabel
 @onready var _list: VBoxContainer = %List
@@ -22,6 +25,7 @@ func _ready() -> void:
 	_back_button.pressed.connect(close)
 	SaveService.coins_changed.connect(_refresh.unbind(1))
 	SaveService.upgrades_changed.connect(_refresh)
+	SaveService.stash_changed.connect(_refresh)
 	_build()
 	hide()
 
@@ -49,6 +53,17 @@ func buy_weapon(weapon: WeaponDef) -> bool:
 	return SaveService.purchase_weapon(weapon.id, weapon.unlock_cost)
 
 
+## Buys one bundle of `item` into the stash. False if unaffordable or not sold.
+func buy_item(item: ItemDef) -> bool:
+	if item.shop_price <= 0:
+		return false
+	return SaveService.purchase_item(item.id, maxi(item.shop_bundle, 1), item.shop_price)
+
+
+func get_item_row(item: ItemDef) -> ShopRow:
+	return _item_rows.get(item)
+
+
 func get_upgrade_row(upgrade: UpgradeDef) -> ShopRow:
 	return _upgrade_rows.get(upgrade)
 
@@ -70,6 +85,13 @@ func _build() -> void:
 		var row := _add_row()
 		row.buy_pressed.connect(buy_weapon.bind(weapon))
 		_weapon_rows[weapon] = row
+	_add_header("ITEMS  (kept in your stash; bring them in with PREPARE)")
+	for item in catalog.items:
+		if item.shop_price <= 0:
+			continue
+		var row := _add_row()
+		row.buy_pressed.connect(buy_item.bind(item))
+		_item_rows[item] = row
 
 
 func _refresh() -> void:
@@ -93,6 +115,14 @@ func _refresh() -> void:
 			"",
 			"OWNED" if owned else "$ %d" % weapon.unlock_cost,
 			not owned and coins >= weapon.unlock_cost)
+	for item in _item_rows:
+		var bundle := maxi(item.shop_bundle, 1)
+		_item_rows[item].configure(
+			item.display_name if bundle == 1 else "%s x%d" % [item.display_name, bundle],
+			item.describe(),
+			"Own %d" % SaveService.get_stash_count(item.id),
+			"$ %d" % item.shop_price,
+			coins >= item.shop_price)
 
 
 func _weapon_info(weapon: WeaponDef) -> String:

@@ -1,6 +1,7 @@
 extends Control
 ## Entry screen: persistent progress plus the way into a run, the shop and
-## settings. The panels are full-screen overlays; Android back / Esc closes
+## settings. PLAY opens the PREPARE panel when the stash has items this build
+## knows, otherwise starts the run directly. The panels are full-screen overlays; Android back / Esc closes
 ## whichever is open.
 
 @onready var _coins_label: Label = %CoinsLabel
@@ -8,10 +9,12 @@ extends Control
 @onready var _stats_label: Label = %StatsLabel
 @onready var _shop: ShopPanel = %ShopPanel
 @onready var _settings: SettingsPanel = %SettingsPanel
+@onready var _prepare: PreparePanel = %PreparePanel
 
 
 func _ready() -> void:
-	%PlayButton.pressed.connect(SceneRouter.start_run)
+	%PlayButton.pressed.connect(_on_play)
+	_prepare.start_requested.connect(SceneRouter.start_run)
 	%ShopButton.pressed.connect(_shop.open)
 	%SettingsButton.pressed.connect(_settings.open)
 	SaveService.coins_changed.connect(_on_coins_changed)
@@ -33,11 +36,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Closes the open panel, if any. True if one was open.
 func _close_panel() -> bool:
-	for panel: Control in [_shop, _settings]:
+	for panel: Control in [_shop, _settings, _prepare]:
 		if panel.visible:
 			panel.call(&"close")
 			return true
 	return false
+
+
+func _on_play() -> void:
+	if _prepare.has_items_to_bring():
+		_prepare.open()
+	else:
+		SceneRouter.start_run()
 
 
 func _on_coins_changed(total: int) -> void:

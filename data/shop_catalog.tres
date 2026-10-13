@@ -18,9 +18,10 @@
 [ext_resource type="Resource" path="res://data/items/grenade.tres" id="16_grenade"]
 [ext_resource type="Resource" path="res://data/items/damage_boost.tres" id="17_dmg_boost"]
 [ext_resource type="Resource" path="res://data/items/max_hp_boost.tres" id="18_hp_boost"]
+[ext_resource type="Resource" path="res://data/upgrades/backpack.tres" id="19_backpack"]
 
 [resource]
 script = ExtResource("1_cat")
-upgrades = Array[ExtResource("2_up")]([ExtResource("4_hp"), ExtResource("5_dmg"), ExtResource("6_spd"), ExtResource("7_mag"), ExtResource("8_ammo")])
+upgrades = Array[ExtResource("2_up")]([ExtResource("4_hp"), ExtResource("5_dmg"), ExtResource("6_spd"), ExtResource("7_mag"), ExtResource("8_ammo"), ExtResource("19_backpack")])
 weapons = Array[ExtResource("3_wdef")]([ExtResource("9_pistol"), ExtResource("10_smg"), ExtResource("11_shotgun")])
 items = Array[ExtResource("12_item")]([ExtResource("13_smg_ammo"), ExtResource("14_shells"), ExtResource("15_medkit"), ExtResource("16_grenade"), ExtResource("17_dmg_boost"), ExtResource("18_hp_boost")])

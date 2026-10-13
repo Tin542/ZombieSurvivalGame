@@ -9,7 +9,7 @@ extends RefCounted
 ## current format. When the format changes: bump VERSION, add a
 ## _migrate_vN_to_vN+1 step, and register it in migrate().
 
-const VERSION := 2
+const VERSION := 3
 const DEFAULT_SETTINGS := {
 	"master_volume": 1.0,
 	"vibration": true,
@@ -30,6 +30,12 @@ var unlocked_weapons: Array[StringName] = [&"pistol"]
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 ## Lifetime counters (keys from DEFAULT_STATS), shown in the main menu.
 var stats: Dictionary = DEFAULT_STATS.duplicate()
+## Items bought in the shop and not yet taken into a run: item id -> units.
+## No slot limit; only the run's bag has slots.
+var stash: Dictionary[StringName, int] = {}
+## What the player chose to bring last time (item id -> units), restored by
+## the PREPARE panel and used by RETRY. May exceed what the stash holds now.
+var last_loadout: Dictionary[StringName, int] = {}
 
 
 ## Format version of a raw save dictionary. Saves from before versioning
@@ -46,6 +52,8 @@ static func migrate(dict: Dictionary) -> Dictionary:
 	var version := version_of(result)
 	if version < 2:
 		result = _migrate_v1_to_v2(result)
+	if version < 3:
+		result = _migrate_v2_to_v3(result)
 	return result
 
 
@@ -54,6 +62,14 @@ static func migrate(dict: Dictionary) -> Dictionary:
 static func _migrate_v1_to_v2(dict: Dictionary) -> Dictionary:
 	dict["stats"] = DEFAULT_STATS.duplicate()
 	dict["version"] = 2
+	return dict
+
+
+## v3 added the item stash and the remembered loadout; both start empty.
+static func _migrate_v2_to_v3(dict: Dictionary) -> Dictionary:
+	dict["stash"] = {}
+	dict["last_loadout"] = {}
+	dict["version"] = 3
 	return dict
 
 
@@ -72,6 +88,8 @@ func to_dict() -> Dictionary:
 		"unlocked_weapons": weapons,
 		"settings": settings.duplicate(),
 		"stats": stats.duplicate(),
+		"stash": _counts_to_dict(stash),
+		"last_loadout": _counts_to_dict(last_loadout),
 	}
 
 
@@ -109,4 +127,27 @@ static func from_dict(raw: Dictionary) -> SaveData:
 			var value: Variant = loaded_stats.get(key)
 			if value is int or value is float:
 				data.stats[key] = maxi(int(value), 0)
+
+	data.stash = _parse_counts(dict.get("stash", {}))
+	data.last_loadout = _parse_counts(dict.get("last_loadout", {}))
 	return data
+
+
+static func _counts_to_dict(counts: Dictionary[StringName, int]) -> Dictionary:
+	var result := {}
+	for id in counts:
+		if counts[id] > 0:
+			result[String(id)] = counts[id]
+	return result
+
+
+## {id: count} from JSON; drops non-numeric and non-positive counts. Unknown
+## item ids are kept (the catalog decides what exists, not the save).
+static func _parse_counts(raw: Variant) -> Dictionary[StringName, int]:
+	var counts: Dictionary[StringName, int] = {}
+	if raw is Dictionary:
+		for key in raw:
+			var value: Variant = raw[key]
+			if (value is int or value is float) and int(value) > 0:
+				counts[StringName(str(key))] = int(value)
+	return counts
