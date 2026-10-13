@@ -7,8 +7,9 @@ const FADE_TIME := 0.2
 
 var _fade: ColorRect
 var _busy := false
-## Items (id -> units) the next run should take from the stash.
-var _run_loadout: Dictionary = {}
+## Items (id -> units) the next run should take from the stash, or null when
+## the run was started without a loadout choice (PLAY with nothing to bring).
+var _run_loadout: Variant = null
 
 
 func _ready() -> void:
@@ -26,20 +27,21 @@ func go_to_main_menu() -> void:
 	_change_scene(MAIN_MENU)
 
 
-## Starts a run that brings `loadout` (item id -> units) from the stash.
-## The run takes the items itself (SaveService.take_loadout) when it starts,
-## so a transition that never happens can't lose them.
-func start_run(loadout: Dictionary = {}) -> void:
+## Starts a run that brings `loadout` (a Dictionary of item id -> units, may be
+## empty) from the stash; null = no loadout choice was made. The run takes the
+## items itself (SaveService.take_loadout) when it starts, so a transition that
+## never happens can't lose them.
+func start_run(loadout: Variant = null) -> void:
 	if _busy:
 		return
-	_run_loadout = loadout.duplicate()
+	_run_loadout = loadout.duplicate() if loadout is Dictionary else null
 	_change_scene(RUN)
 
 
-## The loadout passed to start_run(), handed over once; empty afterwards.
-func take_run_loadout() -> Dictionary:
-	var loadout := _run_loadout
-	_run_loadout = {}
+## The loadout passed to start_run(), handed over once; null afterwards.
+func take_run_loadout() -> Variant:
+	var loadout: Variant = _run_loadout
+	_run_loadout = null
 	return loadout
 
 

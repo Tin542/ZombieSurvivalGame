@@ -126,14 +126,6 @@ func get_stash_count(id: StringName) -> int:
 	return data.stash.get(id, 0)
 
 
-## True if the stash holds at least one item.
-func has_stash() -> bool:
-	for id in data.stash:
-		if data.stash[id] > 0:
-			return true
-	return false
-
-
 ## Spends `cost` and adds `amount` units of item `id` to the stash, in a
 ## single save. False if unaffordable.
 func purchase_item(id: StringName, amount: int, cost: int) -> bool:

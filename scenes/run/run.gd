@@ -143,11 +143,7 @@ func _ready() -> void:
 
 func _build_loadout() -> Array[WeaponDef]:
 	var unlock_all := debug_unlock_all_weapons and OS.is_debug_build()
-	var loadout: Array[WeaponDef] = []
-	for weapon in catalog.weapons:
-		if unlock_all or weapon.unlock_cost == 0 or SaveService.is_weapon_unlocked(weapon.id):
-			loadout.append(weapon)
-	return loadout
+	return catalog.owned_weapons(func(id: StringName) -> bool: return unlock_all or SaveService.is_weapon_unlocked(id))
 
 
 ## Turns owned shop levels into this run's stats. Must run before the loadout
@@ -413,17 +409,28 @@ func _stock_starting_ammo() -> void:
 		_add_or_drop(item, kit[item])
 
 
-## Takes the chosen items (id -> units) out of the stash and puts them in the
-## bag. They belong to this run now and are lost on death. Anything that
-## doesn't fit lands at the player's feet; unknown ids are skipped.
-func _bring_loadout(wanted: Dictionary) -> void:
-	if wanted.is_empty():
+## Takes the chosen items (item id -> units) out of the stash and puts them in
+## the bag. They belong to this run now and are lost on death. `wanted` is
+## null when PLAY skipped PREPARE (nothing to choose from): the remembered
+## loadout stays. An empty choice is still a choice and is remembered, so
+## RETRY then brings nothing. Ids this build doesn't know stay in the stash.
+## Consumables go in before ammo, so if anything overflows to the ground it's
+## the bulk ammo.
+func _bring_loadout(wanted: Variant) -> void:
+	if not wanted is Dictionary:
 		return
-	var taken := SaveService.take_loadout(wanted)
+	var known := {}
+	for key in wanted:
+		if catalog.find_item(StringName(str(key))) != null:
+			known[key] = wanted[key]
+	var taken := SaveService.take_loadout(known)
+	var defs: Array[ItemDef] = []
 	for id in taken:
-		var def := catalog.find_item(id)
-		if def != null:
-			_add_or_drop(def, taken[id])
+		defs.append(catalog.find_item(id))
+	defs.sort_custom(func(a: ItemDef, b: ItemDef) -> bool:
+		return a.kind != ItemDef.Kind.AMMO and b.kind == ItemDef.Kind.AMMO)
+	for def in defs:
+		_add_or_drop(def, taken[def.id])
 
 
 ## Puts `count` units of `def` in the bag; the rest becomes a held pickup at

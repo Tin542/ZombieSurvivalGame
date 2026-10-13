@@ -2,8 +2,9 @@ extends SceneTree
 ## Headless checks for shop items, the stash and the PREPARE loadout: save v3
 ## (stash, last_loadout, migration), atomic item purchases on disk, shop item
 ## rows, take_loadout clamping + remembering, the PREPARE panel (restore, +/-,
-## stash and bag-slot limits, Backpack upgrade), and a run bringing the
-## loadout into its bag (overflow on the ground, lost on death).
+## stash and bag-slot limits, starting ammo counted, Backpack upgrade), and a
+## run bringing the loadout into its bag (empty choice remembered, unknown ids
+## kept, overflow on the ground consumables first, lost on death).
 ## Run: godot --headless --path . --fixed-fps 60 -s res://tests/loadout_test.gd
 ## Exits with code 1 if any check fails. The real save is restored afterwards.
 
@@ -44,7 +45,7 @@ func _initialize() -> void:
 	_save.data = SaveData.new()
 	_save.data.coins = 100
 	_check(_save.purchase_item(&"medkit", 1, 30), "affordable item bought")
-	_check(_save.get_coins() == 70 and _save.get_stash_count(&"medkit") == 1 and _save.has_stash(), "coins spent, item in the stash")
+	_check(_save.get_coins() == 70 and _save.get_stash_count(&"medkit") == 1 , "coins spent, item in the stash")
 	_check(not _save.purchase_item(&"medkit", 1, 80) and _save.get_coins() == 70 and _save.get_stash_count(&"medkit") == 1, "unaffordable item refused, nothing changes")
 	var reloaded: SaveData = _save._load()
 	_check(reloaded.coins == 70 and reloaded.stash.get(&"medkit") == 1, "purchase is on disk")
@@ -132,7 +133,7 @@ func _initialize() -> void:
 	_check(bag.capacity == 10, "Backpack lv1: 10 bag slots in the run")
 	_check(bag.count_of(MEDKIT) == 2 and bag.count_of(GRENADE) == 1 and bag.count_of(RAGE) == 1, "loadout is in the bag")
 	_check(_save.data.stash == {&"medkit": 1}, "brought items left the stash")
-	_check(router.take_run_loadout().is_empty(), "loadout handed over once")
+	_check(router.take_run_loadout() == null, "loadout handed over once")
 	player.health.take_damage(1e9)
 	await process_frame
 	_check(bag.used_slots() == 0 and _save.data.stash == {&"medkit": 1}, "death loses what was brought, the stash keeps the rest")
@@ -140,16 +141,75 @@ func _initialize() -> void:
 	run.queue_free()
 	await process_frame
 
-	# --- Overflow lands on the ground --------------------------------------------------
+	# --- Overflow lands on the ground, consumables go in first --------------------------
 	_save.data = SaveData.new()
-	_save.data.stash = _counts({&"smg_ammo": 2000})
-	router._run_loadout = {&"smg_ammo": 2000}
-	run = load(RUN_SCENE).instantiate()
-	root.add_child(run)
-	await process_frame
-	run.get_node("WaveDirector").stop()
+	_save.data.stash = _counts({&"smg_ammo": 2000, &"medkit": 3})
+	router._run_loadout = {&"smg_ammo": 2000, &"medkit": 3}
+	run = await _start_run()
 	var pickups: PickupManager = run.get_node("Pickups")
-	_check(run.state.inventory.count_of(SMG_AMMO) == 8 * 120 and pickups.count_on_ground(SMG_AMMO) == 2000 - 8 * 120, "what doesn't fit is dropped at the player's feet")
+	_check(run.state.inventory.count_of(MEDKIT) == 3, "consumables are packed before bulk ammo")
+	_check(run.state.inventory.count_of(SMG_AMMO) == 7 * 120 and pickups.count_on_ground(SMG_AMMO) == 2000 - 7 * 120, "what doesn't fit is dropped at the player's feet")
+	run.queue_free()
+	await process_frame
+
+	# --- An empty choice is remembered; skipping PREPARE keeps the old one -------------
+	_save.data = SaveData.new()
+	_save.data.stash = _counts({&"medkit": 4})
+	_save.data.last_loadout = _counts({&"medkit": 2})
+	router._run_loadout = {}  # PREPARE, START with nothing picked
+	run = await _start_run()
+	_check(_save.data.last_loadout.is_empty() and _save.get_stash_count(&"medkit") == 4, "empty START: nothing taken, empty choice remembered")
+	_check(run.state.inventory.count_of(MEDKIT) == 0, "empty START: nothing in the bag")
+	run.queue_free()
+	await process_frame
+	_save.data.last_loadout = _counts({&"medkit": 2})
+	router._run_loadout = null  # PLAY without PREPARE
+	run = await _start_run()
+	_check(_save.data.last_loadout == {&"medkit": 2} and _save.get_stash_count(&"medkit") == 4, "no PREPARE: stash and remembered loadout untouched")
+	run.queue_free()
+	await process_frame
+
+	# --- Unknown item ids stay in the stash ---------------------------------------------
+	_save.data = SaveData.new()
+	_save.data.stash = _counts({&"flare": 2, &"medkit": 1})
+	router._run_loadout = {&"flare": 1, &"medkit": 1}
+	run = await _start_run()
+	_check(_save.get_stash_count(&"flare") == 2 and _save.get_stash_count(&"medkit") == 0, "unknown ids are never taken from the stash")
+	_check(_save.data.last_loadout == {&"medkit": 1}, "only known items are remembered")
+	run.queue_free()
+	await process_frame
+	_save.data = SaveData.new()
+	_save.data.stash = _counts({&"flare": 2})
+	menu = load(MENU_SCENE).instantiate()
+	root.add_child(menu)
+	await process_frame
+	prepare = menu.get_node("%PreparePanel")
+	_check(not prepare.has_items_to_bring(), "a stash of unknown ids has nothing to bring (PLAY skips PREPARE)")
+	_save.data.stash = _counts({&"flare": 2, &"grenade": 1})
+	_check(prepare.has_items_to_bring(), "a known item makes PREPARE worth opening")
+
+	# --- PREPARE counts the starting ammo already in the bag -----------------------------
+	_save.data = SaveData.new()
+	_save.data.unlocked_weapons.append(&"smg")
+	_save.data.unlocked_weapons.append(&"shotgun")
+	_save.data.upgrade_levels[&"start_ammo"] = 4  # Ammo Pouch max: 240 SMG + 48 shells = 4 slots
+	_save.data.stash = _counts({&"medkit": 30, &"smg_ammo": 600, &"shotgun_ammo": 24})
+	prepare.open()
+	var kit_slots: int = prepare.used_slots()
+	_check(kit_slots == 4 and prepare.get_node("%BagLabel").text == "BAG 4/8", "starting ammo fills 4 slots before anything is picked")
+	_check(prepare.increase(SMG_AMMO) and prepare.used_slots() == 5, "picked SMG ammo tops up the starting stack (240 + 60 -> 3 slots)")
+	while prepare.increase(MEDKIT):
+		pass
+	_check(prepare.used_slots() == 8 and prepare.get_count(MEDKIT) == 3 * MEDKIT.stack_limit, "medkits only get the slots starting ammo leaves")
+	var picked: Dictionary = prepare.get_loadout()
+	prepare.close()
+	menu.queue_free()
+	await process_frame
+	router._run_loadout = picked
+	run = await _start_run()
+	pickups = run.get_node("Pickups")
+	_check(pickups.active_count() == 0 and run.state.inventory.used_slots() == 8, "everything PREPARE allowed fits in the bag")
+	_check(run.state.inventory.count_of(SMG_AMMO) == 300 and run.state.inventory.count_of(MEDKIT) == 9, "bag holds starting ammo plus the picks")
 	run.queue_free()
 	await process_frame
 
@@ -157,6 +217,14 @@ func _initialize() -> void:
 	_save.save()
 	print("FAILURES: %d" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+func _start_run() -> Node:
+	var run: Node = load(RUN_SCENE).instantiate()
+	root.add_child(run)
+	await process_frame
+	run.get_node("WaveDirector").stop()
+	return run
 
 
 func _counts(raw: Dictionary) -> Dictionary[StringName, int]:

@@ -1,9 +1,11 @@
 class_name PreparePanel
 extends Control
 ## Loadout picker shown before a run when the stash has items: +/- per item,
-## limited by what the stash holds and by the bag's slots. Opens with the
-## last loadout (clamped to the stash and the bag). START reports the choice;
-## the run takes the items from the stash when it begins.
+## limited by what the stash holds and by the bag's slots. The bag count
+## includes the starting ammo the run stocks first (picked ammo of the same
+## kind tops up those stacks, like Inventory.add). Opens with the last
+## loadout (clamped to the stash and the bag). START reports the choice, even
+## an empty one; the run takes the items from the stash when it begins.
 
 ## `loadout`: item id -> units to bring.
 signal start_requested(loadout: Dictionary)
@@ -15,6 +17,8 @@ signal closed
 var _counts: Dictionary[ItemDef, int] = {}
 var _rows: Dictionary[ItemDef, Row] = {}
 var _capacity := RunState.BASE_BAG_SLOTS
+## Ammo the run puts in the bag before the loadout (owned weapons, Ammo Pouch).
+var _kit: Dictionary[ItemDef, int] = {}
 
 @onready var _bag_label: Label = %BagLabel
 @onready var _list: VBoxContainer = %List
@@ -39,6 +43,7 @@ func _ready() -> void:
 ## Shows the panel with the last loadout, fitted to the stash and the bag.
 func open() -> void:
 	_capacity = catalog.bag_slots(RunState.BASE_BAG_SLOTS, SaveService.get_upgrade_level)
+	_kit = catalog.starting_ammo(catalog.owned_weapons(SaveService.is_weapon_unlocked), SaveService.get_upgrade_level)
 	var last := SaveService.data.last_loadout
 	_counts.clear()
 	for item in _rows:
@@ -66,6 +71,15 @@ func close() -> void:
 		return
 	hide()
 	closed.emit()
+
+
+## True if the stash holds at least one item this build knows (one PREPARE
+## can show). Unknown ids from a newer or older build don't count.
+func has_items_to_bring() -> bool:
+	for item in _rows:
+		if SaveService.get_stash_count(item.id) > 0:
+			return true
+	return false
 
 
 ## Item id -> units, for every item with at least one picked.
@@ -110,12 +124,21 @@ func can_add(item: ItemDef) -> bool:
 	return _rows.has(item) and count < SaveService.get_stash_count(item.id) and _fits(item, count + 1)
 
 
-## Bag slots the picked items fill (each item stacks up to its stack_limit).
+## Bag slots the run will use: starting ammo plus the picked items (each item
+## stacks up to its stack_limit, picked ammo topping up the starting stacks).
 func used_slots() -> int:
 	var used := 0
 	for item in _counts:
 		used += _slots_for(item, _counts[item])
+	for item in _kit:
+		if not _counts.has(item):
+			used += _slots_for(item, 0)
 	return used
+
+
+## Starting-ammo units of `item` the run stocks before the loadout.
+func kit_count(item: ItemDef) -> int:
+	return _kit.get(item, 0)
 
 
 func bag_capacity() -> int:
@@ -130,8 +153,10 @@ func _fits(item: ItemDef, count: int) -> bool:
 	return used_slots() - _slots_for(item, get_count(item)) + _slots_for(item, count) <= _capacity
 
 
+## Slots `item` fills with `count` picked units on top of its starting ammo.
 func _slots_for(item: ItemDef, count: int) -> int:
-	return ceili(float(count) / maxi(item.stack_limit, 1)) if count > 0 else 0
+	var total := count + kit_count(item)
+	return ceili(float(total) / maxi(item.stack_limit, 1)) if total > 0 else 0
 
 
 func _build() -> void:
@@ -195,6 +220,8 @@ func _refresh() -> void:
 		row.root.visible = stash > 0
 		any = any or stash > 0
 		row.info.text = "In stash: %d  |  %s" % [stash, item.describe()]
+		if kit_count(item) > 0:
+			row.info.text = "In stash: %d  |  +%d starting ammo already in the bag" % [stash, kit_count(item)]
 		row.count.text = str(get_count(item))
 		row.minus.disabled = get_count(item) <= 0
 		row.plus.disabled = not can_add(item)

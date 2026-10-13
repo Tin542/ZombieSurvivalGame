@@ -1,7 +1,7 @@
 extends Control
 ## Entry screen: persistent progress plus the way into a run, the shop and
-## settings. PLAY opens the PREPARE panel when the stash has items to bring,
-## otherwise starts the run directly. The panels are full-screen overlays; Android back / Esc closes
+## settings. PLAY opens the PREPARE panel when the stash has items this build
+## knows, otherwise starts the run directly. The panels are full-screen overlays; Android back / Esc closes
 ## whichever is open.
 
 @onready var _coins_label: Label = %CoinsLabel
@@ -44,7 +44,7 @@ func _close_panel() -> bool:
 
 
 func _on_play() -> void:
-	if SaveService.has_stash():
+	if _prepare.has_items_to_bring():
 		_prepare.open()
 	else:
 		SceneRouter.start_run()

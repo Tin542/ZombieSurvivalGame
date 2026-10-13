@@ -69,9 +69,7 @@ func set_loadout(weapons: Array[WeaponDef]) -> void:
 
 ## Reserve ammo `weapon` starts a run with (Ammo Pouch applied, capped).
 func starting_reserve(weapon: WeaponDef) -> int:
-	if weapon.infinite_ammo:
-		return 0
-	return clampi(roundi(weapon.start_reserve_ammo * start_ammo_multiplier), 0, weapon.max_reserve_ammo)
+	return weapon.starting_reserve(start_ammo_multiplier)
 
 
 ## Ammo items the loadout starts with, for the run to put in the bag.

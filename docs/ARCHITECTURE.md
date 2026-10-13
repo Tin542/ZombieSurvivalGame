@@ -124,20 +124,28 @@ Supplies (25) check crate pickups.
 ## Stash + loadout
 - Bought items go to `SaveData.stash` (item id → units, no slot limit). Only
   the run's bag has slots.
-- PLAY: `SaveService.has_stash()` → `PreparePanel.open()`, else the run starts
-  directly. The panel restores `SaveData.last_loadout`, clamped to the stash
-  and to the bag (`ShopCatalog.bag_slots`; consumables before ammo, then
-  catalog order). +/− change one unit (ammo: one `shop_bundle`); + is
-  disabled when the stash is out or the stack would need a slot the bag
-  doesn't have. START emits `start_requested(loadout)` → `SceneRouter.start_run(loadout)`.
-- `SceneRouter` only carries the requested loadout across the scene change
-  (`take_run_loadout()`, handed over once). The run calls
-  `SaveService.take_loadout(wanted)` in `_ready`, after stocking starting ammo:
-  one save that removes what's available from the stash and stores the
-  request as `last_loadout`. Nothing leaves the stash if the run never starts.
-- Taken items go into the bag; what doesn't fit is a held pickup at the
-  player's feet. They are run items now: death empties the bag, the stash
-  keeps the rest. RETRY calls `start_run(last_loadout)`.
+- PLAY: `PreparePanel.has_items_to_bring()` (a stash item this build knows) →
+  `PreparePanel.open()`, else `SceneRouter.start_run()` with no loadout.
+  The panel restores `SaveData.last_loadout`, clamped to the stash and to the
+  bag (`ShopCatalog.bag_slots`; consumables before ammo, then catalog order).
+  Its slot count includes the starting ammo the run stocks first
+  (`ShopCatalog.starting_ammo(owned_weapons, level_of)`, the same
+  `WeaponDef.starting_reserve()` the run uses); picked ammo tops up those
+  stacks, like `Inventory.add`. +/− change one unit (ammo: one `shop_bundle`);
+  + is disabled when the stash is out or the bag has no slot left. START
+  emits `start_requested(loadout)` (possibly empty) → `SceneRouter.start_run(loadout)`.
+- `SceneRouter` only carries the request across the scene change
+  (`take_run_loadout()`, handed over once). null = no choice was made (PLAY
+  skipped PREPARE): the run takes nothing and `last_loadout` stays. A
+  Dictionary, even empty, is a choice: the run drops ids the catalog doesn't
+  know (they stay in the stash) and calls `SaveService.take_loadout(known)` in
+  `_ready`, after stocking starting ammo: one save that removes what's
+  available from the stash and stores the request as `last_loadout`. Nothing
+  leaves the stash if the run never starts.
+- Taken items go into the bag, consumables before ammo; what doesn't fit is a
+  held pickup at the player's feet. They are run items now: death empties the
+  bag, the stash keeps the rest. RETRY calls `start_run(last_loadout)`, so an
+  empty choice is retried as empty.
 - Settings live in `SaveData.settings` (JSON, type-checked against
   `DEFAULT_SETTINGS`). `SaveService` applies master volume itself; the run reads
   `vibration` (throttled hurt buzz) and `show_fps` (HUD label).

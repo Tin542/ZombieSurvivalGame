@@ -36,3 +36,11 @@ extends Resource
 @export_group("Shop")
 ## Coins to unlock permanently. 0 = unlocked from the start.
 @export var unlock_cost: int = 0
+
+
+## Reserve this weapon starts a run with, given the Ammo Pouch multiplier
+## (capped at max_reserve_ammo; 0 for infinite ammo).
+func starting_reserve(multiplier: float) -> int:
+	if infinite_ammo:
+		return 0
+	return clampi(roundi(start_reserve_ammo * multiplier), 0, max_reserve_ammo)
