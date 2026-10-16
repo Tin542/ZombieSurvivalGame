@@ -19,6 +19,7 @@ func _initialize() -> void:
 	table.base_count = 4
 	table.count_per_wave = 2
 	table.base_spawn_interval = 0.1
+	table.min_spawn_interval = 0.05
 	table.supply_duration = 2.0
 	root.add_child(run)
 

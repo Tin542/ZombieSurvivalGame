@@ -17,8 +17,9 @@ const THINK_INTERVAL := 15
 const SAFE_RADIUS := 70.0
 ## Distance from the arena edge where walls start pushing back.
 const WALL_MARGIN := 90.0
-## Ticks standing on a target that won't be collected before giving up on it.
-const STUCK_TICKS := 40
+## Ticks without getting closer to a target before giving up on it (a held
+## drop the bot stands on, a crate a full bag refuses).
+const STUCK_TICKS := 60
 
 @export var heal_below: float = 0.45
 ## Fewest zombies inside a blast worth a grenade.
@@ -52,13 +53,16 @@ var _pickups: PickupManager
 var _supplies: SupplyManager
 var _director: WaveDirector
 var _bag: Inventory
+## Ammo items of the loadout's limited weapons (tracked for "ammo_min").
+var _ammo_items: Array[ItemDef] = []
 var _tick := 0
 var _wave: Dictionary = {}
 var _move := Vector2.ZERO
 var _rng := RandomNumberGenerator.new()
 var _stuck := {}
 var _target_key := ""
-var _target_ticks := 0
+var _target_best_d := INF
+var _target_progress_tick := 0
 var _last_usec := 0
 
 
@@ -96,9 +100,12 @@ func attach(run: Node) -> void:
 	_supplies = run.get_node("Supplies")
 	_director = run.get_node("WaveDirector")
 	_bag = run.state.inventory
+	for weapon in _player.weapons.loadout():
+		if weapon.ammo_item != null and not weapon.infinite_ammo and weapon.ammo_item not in _ammo_items:
+			_ammo_items.append(weapon.ammo_item)
 	_director.wave_started.connect(_on_wave_started)
 	_director.wave_cleared.connect(_on_wave_cleared)
-	_player.health.damaged.connect(func(amount: float) -> void: _add("damage_taken", amount))
+	_player.health.damaged.connect(_on_damaged)
 	_player.health.healed.connect(func(amount: float) -> void: _add("healed", amount))
 	_player.health.died.connect(_on_died)
 	_player.weapons.fired.connect(_on_fired)
@@ -124,6 +131,10 @@ func _physics_process(_delta: float) -> void:
 	if not _wave.is_empty():
 		var health := _player.health
 		_wave["min_hp_ratio"] = minf(_wave["min_hp_ratio"], health.hp / health.max_hp)
+		var ammo_min: Dictionary = _wave["ammo_min"]
+		for item in _ammo_items:
+			var id := String(item.id)
+			ammo_min[id] = mini(ammo_min.get(id, 1 << 30), _bag.count_of(item))
 	_heal_if_low()
 	if _tick % THINK_INTERVAL == 0:
 		_pick_weapon()
@@ -197,7 +208,9 @@ func _decide_move() -> Vector2:
 		if goal != Vector2.INF and nearest > SAFE_RADIUS:
 			move += (goal - p).normalized() * 0.6
 	elif goal != Vector2.INF:
-		move = (goal - p) + wall * 20.0
+		# No zombie close: walls are no threat (the body collides with them)
+		# and pushing back would stop the bot short of loot near an edge.
+		move = goal - p
 		if p.distance_to(goal) < 2.0:
 			move = Vector2.ZERO
 	else:
@@ -240,16 +253,21 @@ func _goal(p: Vector2, nearest_zombie: float) -> Vector2:
 			best_key = key
 	if combat and nearest_zombie < SAFE_RADIUS:
 		return Vector2.INF
-	# Give up on a target the bot is standing on that doesn't get collected
-	# (held drop, crate refused by a full bag).
-	if best_key != "" and best_key == _target_key and best_d < 6.0:
-		_target_ticks += 1
-		if _target_ticks > STUCK_TICKS:
-			_stuck[best_key] = true
-			return Vector2.INF
-	else:
+	if best_key == "":
+		_target_key = ""
+		return best
+	# Give up on a target the bot stops getting closer to without collecting
+	# it (held drop, crate refused by a full bag).
+	if best_key != _target_key:
 		_target_key = best_key
-		_target_ticks = 0
+		_target_best_d = best_d
+		_target_progress_tick = _tick
+	elif best_d < _target_best_d - 0.5:
+		_target_best_d = best_d
+		_target_progress_tick = _tick
+	elif _tick - _target_progress_tick > STUCK_TICKS:
+		_stuck[best_key] = true
+		return Vector2.INF
 	return best
 
 
@@ -356,6 +374,15 @@ func _on_wave_cleared(_wave_number: int) -> void:
 		_wave["cleared"] = true
 
 
+func _on_damaged(amount: float) -> void:
+	_add("damage_taken", amount)
+	# The run empties the bag on death before the bot hears about it, so take
+	# the death-wave snapshot now (damaged is emitted before died).
+	if _player.health.hp <= 0.0 and not _wave.is_empty():
+		_wave["min_hp_ratio"] = 0.0
+		_wave["bag_at_death"] = _bag_counts()
+
+
 func _on_died() -> void:
 	died = true
 	_steer(Vector2.ZERO)
@@ -372,7 +399,8 @@ func _finish_record(record: Dictionary) -> Dictionary:
 	record["kills"] = _run.state.kills - record["kills_before"]
 	record["coins"] = _run.state.coins - record["coins_before"]
 	record["hp_end"] = _player.health.hp
-	record["bag_end"] = _bag_counts()
+	record["bag_end"] = record.get("bag_at_death", _bag_counts())
+	record.erase("bag_at_death")
 	for key in ["start_tick", "kills_before", "coins_before"]:
 		record.erase(key)
 	return record
@@ -385,7 +413,7 @@ func _new_wave_record(wave: int, zombie_count: int) -> Dictionary:
 		"hp_start": _player.health.hp, "max_hp": _player.health.max_hp, "min_hp_ratio": 1.0,
 		"damage_taken": 0.0, "healed": 0.0, "medkits_used": 0, "boosts_used": 0,
 		"grenades_thrown": 0, "crates_health": 0, "crates_ammo": 0,
-		"shots": {}, "loot_dropped": {}, "loot_picked": {}, "bag_start": _bag_counts(),
+		"shots": {}, "loot_dropped": {}, "loot_picked": {}, "ammo_min": {}, "bag_start": _bag_counts(),
 	}
 
 

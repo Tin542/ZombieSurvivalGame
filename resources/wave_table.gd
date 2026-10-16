@@ -24,6 +24,9 @@ extends Resource
 ## Length of the break between waves, when supply crates are on the ground.
 @export var supply_duration: float = 20.0
 @export var supply_crates: int = 3
+## Crates when no weapon in the loadout uses ammo: they would all be health
+## crates, so fewer of them keep free healing in check.
+@export var health_only_crates: int = 1
 ## Item a health crate puts in the bag, and how many.
 @export var supply_medkit: ItemDef
 @export var supply_medkits: int = 1

@@ -4,6 +4,8 @@ extends SceneTree
 ## per-wave damage, loot, ammo, crates, grenades, frame cost).
 ## Not part of the pass/fail suite; docs/BALANCE.md summarises its numbers.
 ##
+## "wave_reached" is the wave the bot died in (or got stuck in); "last_wave" is
+## the same, except max_wave for a run that survived to the cap ("capped").
 ## Run (arguments after "--"):
 ##   godot --headless --path . --fixed-fps 60 -s res://tests/balance_sim.gd -- \
 ##       --profile=fresh --skill=casual --runs=5 --max-wave=20 --out=/abs/path/results.jsonl
@@ -84,6 +86,8 @@ func _initialize() -> void:
 		report["skill"] = skill
 		report["run"] = r
 		report["capped"] = not bot.died and not abandoned
+		# A capped run stops as wave max_wave + 1 starts: its last wave is max_wave.
+		report["last_wave"] = max_wave if report["capped"] else report["wave_reached"]
 		report["abandoned"] = abandoned
 		report["banked_coins"] = save_service.data.coins
 		lines.append(JSON.stringify(report))

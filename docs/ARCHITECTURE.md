@@ -92,9 +92,11 @@ Supplies (25) check crate pickups.
   wave 1). `run.gd` plans the crate kinds and calls
   `SupplyManager.drop_crates(kinds, break_duration)`; `wave_started` clears
   leftovers.
-- Planning (`run._plan_crates`): no limited-ammo weapon → all health; otherwise
-  one health + one ammo, extras go to whichever is lower (HP vs
-  `WeaponHolder.ammo_fill_ratio()`).
+- Planning: `run._crate_count()` is `WaveTable.supply_crates`, or
+  `health_only_crates` when no weapon uses ammo. `run._plan_crates(count)`: no
+  limited-ammo weapon → all health; otherwise one health + one ammo, extras go
+  to whichever is lower (HP vs `WeaponHolder.ammo_fill_ratio()`). With the
+  shipped `supply_crates = 2` there are no extras.
 - Crates land in a ring around the player (`min/max_drop_distance`, spaced by
   `min_spacing`), fall in over `DROP_TIME` and can only be picked up once landed;
   they blink near the end of the break. The `Indicators` child (z 50) draws
@@ -261,4 +263,13 @@ godot --headless --path . --fixed-fps 60 -s res://tests/grenade_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/loadout_test.gd
 godot --headless --path . -s res://tests/inventory_test.gd
 godot --headless --path . --fixed-fps 60 -s res://tests/inventory_ui_test.gd
+godot --headless --path . --fixed-fps 60 -s res://tests/full_run_test.gd
 ```
+- `tests/support/run_bot.gd` is a scripted player (a Node added to a Run,
+  physics priority -5): it steers through the `move_*` actions and calls the
+  same run methods the HUD does (`use_item`, `throw_grenade`), and records
+  per-wave numbers. It reads zombies via `ZombieManager.slot_count()` /
+  `is_alive()` and counts loot via `PickupManager.spawned` / `collected`.
+- `tests/full_run_test.gd` uses it for a five-wave integration run;
+  `tests/balance_sim.gd` for balance numbers (profiles, skills, one JSON line
+  per run, its own save file per process). See [BALANCE.md](BALANCE.md).

@@ -50,14 +50,14 @@ max_count = 1
 [sub_resource type="Resource" id="Loot_5"]
 script = ExtResource("2_loot")
 item = ExtResource("item_damage_boost")
-chance = 0.05
+chance = 0.03
 min_count = 1
 max_count = 1
 
 [sub_resource type="Resource" id="Loot_6"]
 script = ExtResource("2_loot")
 item = ExtResource("item_max_hp_boost")
-chance = 0.05
+chance = 0.03
 min_count = 1
 max_count = 1
 
@@ -65,8 +65,8 @@ max_count = 1
 script = ExtResource("1_zdef")
 id = &"brute"
 max_hp = 60.0
-move_speed = 18.0
-contact_damage = 15.0
+move_speed = 28.0
+contact_damage = 30.0
 attack_interval = 1.2
 radius = 8.0
 coin_value = 5

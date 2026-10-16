@@ -4,8 +4,9 @@ extends SceneTree
 ## dies. Checks the systems together: loadout taken from the stash, wave loop,
 ## supply crates, loot, weapons drawing bag ammo, grenades, coins banked at
 ## every wave clear and on death, lifetime stats, the bag lost on death, the
-## stash kept, the game-over screen, and invariants every tick (bag within
-## capacity, pools within their caps). Prints frame-cost numbers.
+## stash kept, the game-over screen, and the pickup pool held at a small cap
+## the run actually reaches. Prints frame-cost numbers. (The zombie cap is
+## covered by spawner_test; the bag can't exceed its slots by construction.)
 ## The player gets a huge HP pool so the run reliably reaches wave 6; balance
 ## is measured separately (tests/balance_sim.gd).
 ## Run: godot --headless --path . --fixed-fps 60 -s res://tests/full_run_test.gd
@@ -79,14 +80,18 @@ func _initialize() -> void:
 		if next_wave > 1:
 			crates_dropped[0] += supplies.active_count())
 	var smg_ammo_low := [bag.count_of(SMG.ammo_item)]
-	var invariants_ok := true
+	pickups.max_pickups = 4  # small enough that loot hits the cap
+	var pickup_cap_hit := false
+	var pickup_cap_ok := true
 	var time := 0.0
 	while director.wave <= WAVES and time < TIME_LIMIT:
 		await physics_frame
 		time += 1.0 / Engine.physics_ticks_per_second
 		smg_ammo_low[0] = mini(smg_ammo_low[0], bag.count_of(SMG.ammo_item))
-		if bag.used_slots() > bag.capacity or pickups.active_count() > pickups.max_pickups or zombies.alive_count() > zombies.max_alive:
-			invariants_ok = false
+		if pickups.active_count() == pickups.max_pickups:
+			pickup_cap_hit = true
+		elif pickups.active_count() > pickups.max_pickups:
+			pickup_cap_ok = false
 	var kills_at_six: int = run.state.kills
 	var report: Dictionary = bot.report()
 	print("  info %d game seconds, %d kills, %d coins, peak %d zombies, tick avg %.2f ms (max %.1f)" % [
@@ -117,7 +122,7 @@ func _initialize() -> void:
 	_check(dropped > 0 and picked > 0, "zombies dropped loot and some was picked up (%d / %d units)" % [picked, dropped])
 	_check(smg_shots > 0 and smg_ammo_low[0] < SMG.starting_reserve(1.25), "SMG fired with ammo drawn from the bag")
 	_check(grenades > 0 and bag.count_of(GRENADE) < 3 + _picked(report, "grenade"), "grenades thrown from the bag (%d)" % grenades)
-	_check(invariants_ok, "bag, pickups and zombies stayed within their caps every tick")
+	_check(pickup_cap_hit and pickup_cap_ok, "pickup pool reached its cap and never went over it")
 	_check(report["tick_ms_avg"] < 8.0, "average frame cost under 8 ms headless (%.2f)" % report["tick_ms_avg"])
 
 	# --- Death ------------------------------------------------------------------------

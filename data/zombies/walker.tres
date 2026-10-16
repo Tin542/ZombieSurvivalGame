@@ -40,9 +40,9 @@ max_count = 1
 [resource]
 script = ExtResource("1_zdef")
 id = &"walker"
-max_hp = 10.0
-move_speed = 28.0
-contact_damage = 5.0
+max_hp = 12.0
+move_speed = 50.0
+contact_damage = 12.0
 attack_interval = 0.8
 radius = 5.0
 coin_value = 1

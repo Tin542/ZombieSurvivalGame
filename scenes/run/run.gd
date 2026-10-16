@@ -373,8 +373,15 @@ func _on_wave_cleared(_wave: int) -> void:
 func _on_break_started(next_wave: int, duration: float) -> void:
 	if next_wave <= 1:
 		return
-	_supplies.drop_crates(_plan_crates(wave_table.supply_crates), duration)
+	_supplies.drop_crates(_plan_crates(_crate_count()), duration)
 	_hud.show_toast("SUPPLIES DROPPED")
+
+
+## How many crates a break drops: fewer when they can only be health crates.
+func _crate_count() -> int:
+	if _player.weapons.has_limited_ammo():
+		return wave_table.supply_crates
+	return wave_table.health_only_crates
 
 
 ## Which crates to drop. Ammo is useless without a limited-ammo weapon, so
