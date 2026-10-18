@@ -155,6 +155,13 @@ func _initialize() -> void:
 	var pistol_only: Array[WeaponDef] = [PISTOL]
 	weapons.set_loadout(pistol_only)
 	_check(run._plan_crates(3) == [HEALTH, HEALTH, HEALTH], "pistol-only loadout: all health")
+	_check(run._crate_count() == table.health_only_crates and table.health_only_crates < table.supply_crates, "pistol-only loadout: fewer crates (%d)" % table.health_only_crates)
+	run._on_break_started(director.wave + 1, 5.0)  # the real break handler
+	var all_health := true
+	for i in supplies.active_count():
+		all_health = all_health and supplies.get_crate_kind(i) == HEALTH
+	_check(supplies.active_count() == table.health_only_crates and all_health, "pistol-only break drops %d health crate(s)" % table.health_only_crates)
+	supplies.clear()  # the sections below drop their own crates
 	_check(weapons.ammo_fill_ratio() == 1.0 and not weapons.has_limited_ammo(), "infinite-only loadout reports full ammo")
 
 	# --- Drawing with off-screen crates ---------------------------------------

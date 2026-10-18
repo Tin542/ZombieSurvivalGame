@@ -191,6 +191,12 @@ func get_zombie_radius(index: int) -> float:
 	return _radius[index]
 
 
+## Slots in use this tick, including zombies killed this tick. Iterate
+## 0..slot_count() - 1 and check is_alive(i) to visit every living zombie.
+func slot_count() -> int:
+	return _count
+
+
 ## Living zombies (excludes ones killed this tick).
 func alive_count() -> int:
 	return _alive

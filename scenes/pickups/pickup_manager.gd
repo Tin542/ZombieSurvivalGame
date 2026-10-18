@@ -14,6 +14,8 @@ extends Node2D
 
 ## `count` units of `def` were taken at `world_position`.
 signal collected(def: ItemDef, count: int, world_position: Vector2)
+## A pickup of `count` units of `def` was put on the ground.
+signal spawned(def: ItemDef, count: int)
 
 ## Loot pops out of the kill in an arc and can't be taken until it lands.
 const POP_TIME := 0.3
@@ -78,6 +80,7 @@ func spawn(world_position: Vector2, def: ItemDef, count: int, hold: bool = false
 	pickup.held = hold
 	_pickups.append(pickup)
 	queue_redraw()
+	spawned.emit(def, count)
 
 
 func clear() -> void:

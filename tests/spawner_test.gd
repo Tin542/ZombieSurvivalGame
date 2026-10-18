@@ -66,8 +66,8 @@ func _initialize() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1234
 	_check(_types_for_wave(table, 1, rng) == [&"walker"], "wave 1 is walkers only")
-	_check(_types_for_wave(table, 3, rng) == [&"runner", &"walker"], "wave 3 adds runners")
-	_check(_types_for_wave(table, 5, rng) == [&"brute", &"runner", &"walker"], "wave 5 adds brutes")
+	_check(_types_for_wave(table, 2, rng) == [&"runner", &"walker"], "wave 2 adds runners")
+	_check(_types_for_wave(table, 4, rng) == [&"brute", &"runner", &"walker"], "wave 4 adds brutes")
 	for wave in [1, 5, 10, 20]:
 		print("wave %2d: count=%d interval=%.2fs hp x%.2f speed x%.2f" % [
 			wave, table.zombie_count(wave), table.spawn_interval(wave),

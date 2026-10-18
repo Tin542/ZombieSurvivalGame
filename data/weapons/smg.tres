@@ -21,4 +21,4 @@ infinite_ammo = false
 ammo_item = ExtResource("2_ammo")
 max_reserve_ammo = 240
 start_reserve_ammo = 120
-unlock_cost = 300
+unlock_cost = 400
